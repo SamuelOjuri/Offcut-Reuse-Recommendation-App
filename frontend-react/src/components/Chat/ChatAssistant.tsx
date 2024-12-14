@@ -222,7 +222,7 @@ const ChatAssistant: React.FC = () => {
           />
           <Button 
             type="submit" 
-            variant="contained" 
+            variant="contained"
             disabled={isLoading || !input.trim()}
             sx={{ 
               borderRadius: '12px',
