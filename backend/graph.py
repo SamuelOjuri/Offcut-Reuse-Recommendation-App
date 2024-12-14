@@ -77,32 +77,60 @@ def create_visualization(query_prompt: str):
     
     # Handle predefined visualizations
     if query_prompt == "Create a line chart showing total material usage over time":
-        daily_usage = df.groupby('batch_date')['total_length_used'].sum().reset_index()
-        return px.line(daily_usage, 
-                      x='batch_date', 
-                      y='total_length_used',
-                      title='Material Usage Over Time',
-                      labels={'batch_date': 'Date', 
-                             'total_length_used': 'Total Length Used (mm)'})
+        #daily_usage = df.groupby('batch_date')['total_length_used'].sum().reset_index()
+        daily_usage = df.groupby(pd.Grouper(key='batch_date', freq='W'))['total_length_used'].sum().reset_index()
+        daily_usage['batch_date'] = daily_usage['batch_date'].dt.strftime('%d %b %Y')  # Format to 'DD MMM YYYY'
+
+        fig = px.line(
+            daily_usage,
+            x='batch_date',
+            y='total_length_used',
+            title='Material Usage Over Time',
+            labels={'batch_date': 'Date', 'total_length_used': 'Total Length Used (mm)'}
+        )
+
+        fig.update_xaxes(
+            tickangle=-45,
+            #dtick='M1', 
+            nticks=12,    # Show 12 evenly spaced ticks
+            showgrid=True
+        )
+
+        # Convert numpy types to native Python types
+        return _make_json_serializable(fig)
     
     elif query_prompt == "Create a bar chart showing the top 10 materials by Total Length Used":
         top_materials = df.groupby('item_description')['total_length_used'].sum()\
             .sort_values(ascending=False).head(10).reset_index()
-        return px.bar(top_materials,
+        fig = px.bar(top_materials,
                      x='item_description',
                      y='total_length_used',
-                     title='Top 10 Materials by Total Length Used')
+                     title='Top 10 Materials by Total Length Used',
+                     labels={'item_description': 'Item Description',
+                            'total_length_used': 'Total Length Used (mm)'})
+        
+        fig.update_xaxes(
+            tickangle=-35,
+        )
+
+        return _make_json_serializable(fig)
     
     elif query_prompt == "Create a bar chart showing top 10 items by total offcut length":
         top_offcuts = df.groupby('item_description')['total_offcut_length_created'].sum()\
             .sort_values(ascending=True).head(10).reset_index()
-        return px.bar(top_offcuts,
+        fig = px.bar(top_offcuts,
                      x='total_offcut_length_created',
                      y='item_description',
                      orientation='h',
                      title='Top 10 Items by Total Offcut Length Created',
                      labels={'item_description': 'Item Description',
                             'total_offcut_length_created': 'Total Offcut Length (mm)'})
+        
+        fig.update_yaxes(
+            tickangle=-5,
+        )
+
+        return _make_json_serializable(fig)
     
     elif query_prompt == "Create a visualization of top and bottom 5 materials by efficiency":
         # Group by item_description and calculate mean efficiency
@@ -131,8 +159,11 @@ def create_visualization(query_prompt: str):
         # Update the colors and reverse the y-axis
         fig.update_traces(marker_color=colors)
         fig.update_layout(yaxis={'autorange': 'reversed'})
+        fig.update_yaxes(
+            tickangle=-5,
+        )
         
-        return fig
+        return _make_json_serializable(fig)
     
     # Handle custom queries using PandasAI
     else:
@@ -148,10 +179,33 @@ def create_visualization(query_prompt: str):
         try:
             result = smart_df.chat(enhanced_prompt)
             if hasattr(result, 'update_layout'):  # Check if it's a Plotly figure
-                return result
+                return _make_json_serializable(result)
             else:
                 raise ValueError("Generated result is not a Plotly figure")
         except Exception as e:
             print(f"Error in create_visualization: {str(e)}")
             raise Exception("Failed to generate custom visualization. Please try a different query.")
+
+def _make_json_serializable(fig):
+    """Convert a Plotly figure to JSON-serializable format"""
+    # First convert the figure to a dict
+    fig_dict = fig.to_dict()
+    
+    # Function to convert numpy types to native Python types
+    def convert_numpy(obj):
+        import numpy as np
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, dict):
+            return {key: convert_numpy(value) for key, value in obj.items()}
+        elif isinstance(obj, list):
+            return [convert_numpy(item) for item in obj]
+        return obj
+    
+    # Convert all numpy types in the figure dict
+    return convert_numpy(fig_dict)
 
