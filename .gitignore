@@ -175,3 +175,7 @@ cache/
 # PandasAI
 pandasai.log
 
+# Node.js
+node_modules/
+frontend-react/node_modules/
+
