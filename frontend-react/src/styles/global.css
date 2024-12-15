@@ -83,11 +83,18 @@ code {
 }
 
 .user-message {
+  background-color: #bfbcbc;
+  color:#1e293b;
+  margin-left: auto;
+}
+
+/* 
+.user-message {
   background-color: #8a0101;
   color: white;
   margin-left: auto;
 }
-
+ */
 .assistant-message {
   background-color: #f1f5f9;
   color: #1e293b;

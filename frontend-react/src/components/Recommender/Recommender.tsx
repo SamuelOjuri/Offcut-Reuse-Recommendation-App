@@ -129,7 +129,7 @@ const Recommender: React.FC = () => {
       </Typography>
 
       <Typography variant="body1" sx={{ mb: 3 }}>
-        Get recommendations for reusing offcuts based on batch requirements.
+        Get recommendations for reusing material offcuts based on batch requirements.
       </Typography>
 
       {error && (

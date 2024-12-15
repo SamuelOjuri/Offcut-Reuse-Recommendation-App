@@ -78,8 +78,12 @@ def create_visualization(query_prompt: str):
     # Handle predefined visualizations
     if query_prompt == "Create a line chart showing total material usage over time":
         #daily_usage = df.groupby('batch_date')['total_length_used'].sum().reset_index()
-        daily_usage = df.groupby(pd.Grouper(key='batch_date', freq='W'))['total_length_used'].sum().reset_index()
-        daily_usage['batch_date'] = daily_usage['batch_date'].dt.strftime('%d %b %Y')  # Format to 'DD MMM YYYY'
+        # Convert batch_date to datetime and set it as index before grouping
+        daily_usage = df.copy()
+        daily_usage['batch_date'] = pd.to_datetime(daily_usage['batch_date'])
+        daily_usage.set_index('batch_date', inplace=True)
+        daily_usage = daily_usage.groupby(pd.Grouper(freq='W'))['total_length_used'].sum().reset_index()
+        daily_usage['batch_date'] = daily_usage['batch_date'].dt.strftime('%d %b %Y')
 
         fig = px.line(
             daily_usage,

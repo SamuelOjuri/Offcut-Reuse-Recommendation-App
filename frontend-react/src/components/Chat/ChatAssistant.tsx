@@ -179,6 +179,17 @@ const ChatAssistant: React.FC = () => {
               {msg.role === 'user' ? 'U' : 'A'}
             </Avatar>
             <Paper 
+                sx={{ 
+                  p: 1.5,
+                  maxWidth: '70%',
+                  bgcolor: msg.role === 'user' ? '#cbcbcb' : '#f1f5f9',
+                  color: '#1e293b',
+                  borderRadius: msg.role === 'user' ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
+                  boxShadow: 2,
+                  marginLeft: msg.role === 'user' ? 'auto' : 'inherit'
+                }}
+              >
+            {/* <Paper 
               sx={{ 
                 p: 1.5,
                 maxWidth: '70%',
@@ -187,7 +198,7 @@ const ChatAssistant: React.FC = () => {
                 borderRadius: msg.role === 'user' ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
                 boxShadow: 2
               }}
-            >
+            > */}
               <Typography sx={{ whiteSpace: 'pre-wrap' }}>
                 {msg.content}
               </Typography>
