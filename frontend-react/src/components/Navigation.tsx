@@ -21,6 +21,9 @@ const Navigation: React.FC = () => {
           <Button color="inherit" onClick={() => navigate('/reports')}>
             Reports
           </Button>
+          <Button color="inherit" onClick={() => navigate('/admin')}>
+            Admin
+          </Button>
         </Box>
       </Toolbar>
     </AppBar>

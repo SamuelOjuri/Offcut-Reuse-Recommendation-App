@@ -25,6 +25,7 @@ from backend.routes.recommendation_routes import recommendation_bp
 from backend.api.chat import chat_bp 
 from backend.routes.visualization_routes import visualization_bp
 from backend.routes.reports_routes import reports_bp
+from backend.routes.admin_routes import admin_bp
        
 
 # Register blueprints
@@ -35,6 +36,7 @@ app.register_blueprint(recommendation_bp, url_prefix='/api/recommendations')
 app.register_blueprint(chat_bp, url_prefix='/api/chat')
 app.register_blueprint(visualization_bp, url_prefix='/api/visualizations')
 app.register_blueprint(reports_bp, url_prefix='/api/reports')
+app.register_blueprint(admin_bp, url_prefix='/api/admin')
 
 
 if __name__ == '__main__':

@@ -7,6 +7,7 @@ import ChatAssistant from './components/Chat/ChatAssistant';
 import Recommender from './components/Recommender/Recommender';
 import Visualizations from './components/Visualizations/Visualizations';
 import Reports from './components/Reports/Reports';
+import Admin from './components/Admin/Admin';
 import { theme } from './styles/theme';
 
 const App: React.FC = () => {
@@ -19,6 +20,7 @@ const App: React.FC = () => {
         <Route path="/recommender" element={<Recommender />} />
         <Route path="/visualizations" element={<Visualizations />} />
         <Route path="/reports" element={<Reports />} />
+        <Route path="/admin" element={<Admin />} />
       </Routes>
     </ThemeProvider>
   );
