@@ -10,5 +10,11 @@ const firebaseConfig = {
   appId: process.env.REACT_APP_FIREBASE_APP_ID
 };
 
+// Add validation
+if (!process.env.REACT_APP_FIREBASE_API_KEY) {
+  throw new Error('Firebase API key is missing in environment variables');
+}
+
+// Initialize Firebase only if config is valid
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
