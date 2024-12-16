@@ -15,6 +15,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import SendIcon from '@mui/icons-material/Send';
 import userAvatar from '../../assets/user.png';  // Changed from '../assets/user.png'
 import assistantAvatar from '../../assets/chatbot.png';  // Changed from '../assets/chatbot.png'
+import API_URL from '../../config/api';
+
 
 const ChatAssistant: React.FC = () => {
   const [messages, setMessages] = useState<Array<{role: string, content: string}>>(() => {
@@ -137,6 +139,22 @@ const ChatAssistant: React.FC = () => {
     }
     
     return true;
+  };
+
+  const sendMessage = async (message: string) => {
+    try {
+      const response = await fetch(`${API_URL}/api/chat/message`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message }),
+      });
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      throw new Error('Failed to send message');
+    }
   };
 
   return (

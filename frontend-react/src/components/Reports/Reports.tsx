@@ -13,6 +13,7 @@ import {
   Alert
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
+import API_URL from '../../config/api';
 
 interface SummaryMetrics {
   item_code: string;
@@ -44,7 +45,7 @@ const Reports: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('http://localhost:5000/api/reports/summary');
+      const response = await fetch(`${API_URL}/api/reports/summary`);
       if (!response.ok) throw new Error('Failed to fetch summary metrics');
       const data = await response.json();
       setSummaryMetrics(data);
@@ -60,7 +61,7 @@ const Reports: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('http://localhost:5000/api/reports/offcuts');
+      const response = await fetch(`${API_URL}/api/reports/offcuts`);
       if (!response.ok) throw new Error('Failed to fetch offcuts inventory');
       const data = await response.json();
       setOffcuts(data);

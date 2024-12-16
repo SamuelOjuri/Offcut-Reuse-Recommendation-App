@@ -10,6 +10,7 @@ import {
   Alert
 } from '@mui/material';
 import Plot from 'react-plotly.js';
+import API_URL from '../../config/api';
 
 interface VisualizationOptions {
   [key: string]: string | null;
@@ -77,55 +78,28 @@ const Visualizations: React.FC = () => {
     setPlotData(null);
 
     try {
-      const queryPrompt = selectedViz === "Create a Visualisation" 
-        ? customQuery 
-        : vizOptions[selectedViz];
+      const response = await fetch(`${API_URL}/api/visualizations/generate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          query: selectedViz === "Create a Visualisation" ? customQuery : vizOptions[selectedViz]
+        }),
+      });
 
-      if (!queryPrompt) {
-        throw new Error("Please provide a visualization query");
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      if (selectedViz === "Create a Visualisation") {
-        const { isValid, error } = validateVisualizationQuery(customQuery);
-        if (!isValid) {
-          throw new Error(error || 'Invalid query');
-        }
+      const data = await response.json();
+      
+      if (!data.figure || !validatePlotData(data.figure)) {
+        throw new Error('Invalid visualization data received');
       }
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-
-      try {
-        const response = await fetch('http://localhost:5000/api/visualizations/create', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify({ query_prompt: queryPrompt }),
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || 'Failed to generate visualization');
-        }
-
-        const data = await response.json();
-        
-        if (!data.figure || !validatePlotData(data.figure)) {
-          throw new Error('Invalid visualization data received');
-        }
-
-        setPlotData(data.figure);
-      } catch (err) {
-        if (err instanceof Error && err.name === 'AbortError') {
-          throw new Error('Request timed out. Please try again.');
-        }
-        throw err;
-      }
+      setPlotData(data.figure);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {

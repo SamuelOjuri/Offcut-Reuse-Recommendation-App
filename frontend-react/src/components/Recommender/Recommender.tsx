@@ -19,6 +19,7 @@ import {
   Grid
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import API_URL from '../../config/api';
 
 interface Recommendation {
   is_double_cut: boolean;
@@ -50,7 +51,7 @@ const Recommender: React.FC = () => {
 
   const checkBatchExists = async (code: string): Promise<boolean> => {
     try {
-      const response = await fetch(`http://localhost:5000/api/batches/check/${code}`);
+      const response = await fetch(`${API_URL}/api/batches/check/${code}`);
       const data = await response.json();
       return data.exists;
     } catch (err) {
@@ -79,7 +80,7 @@ const Recommender: React.FC = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/recommendations/start', {
+      const response = await fetch(`${API_URL}/api/recommendations/start`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
