@@ -84,7 +84,18 @@ const ChatAssistant: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Input validation
     if (!input.trim()) return;
+    
+    if (input.length > MAX_INPUT_LENGTH) {
+      setError(`Message too long. Maximum ${MAX_INPUT_LENGTH} characters allowed.`);
+      return;
+    }
+
+    if (!validateInput(input)) {
+      return;
+    }
 
     setError(null);
     setIsLoading(true);
@@ -103,6 +114,29 @@ const ChatAssistant: React.FC = () => {
   const handleClearHistory = () => {
     setMessages([]);
     setError(null);
+  };
+
+  const MAX_INPUT_LENGTH = 4000; 
+
+  // Add basic content validation
+  const validateInput = (text: string): boolean => {
+    // Check for only whitespace
+    if (text.trim().length === 0) return false;
+    
+    // Check for minimum length
+    if (text.trim().length < 2) {
+      setError("Message too short");
+      return false;
+    }
+    
+    // Check for valid characters
+    const validCharacters = /^[a-zA-Z0-9\s.,!?()-_@#$%^&*]+$/;
+    if (!validCharacters.test(text)) {
+      setError("Message contains invalid characters");
+      return false;
+    }
+    
+    return true;
   };
 
   return (

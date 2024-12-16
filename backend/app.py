@@ -2,6 +2,7 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from flask_cors import CORS
+from flask_talisman import Talisman
 
 app = Flask(__name__)
 CORS(app, resources={
@@ -11,6 +12,16 @@ CORS(app, resources={
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     }
 })
+
+Talisman(app, 
+    content_security_policy={
+        'default-src': "'self'",
+        'script-src': "'self'",
+        'style-src': "'self' 'unsafe-inline' https://fonts.googleapis.com",
+        'font-src': "'self' https://fonts.gstatic.com",
+        'img-src': "'self' data: https:",
+    }
+)
 
 app.config.from_object('backend.config.Config')
 

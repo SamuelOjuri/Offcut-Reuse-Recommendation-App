@@ -15,12 +15,18 @@ interface VisualizationOptions {
   [key: string]: string | null;
 }
 
+
+
 const Visualizations: React.FC = () => {
   const [selectedViz, setSelectedViz] = useState('');
   const [customQuery, setCustomQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [plotData, setPlotData] = useState<any>(null);
+  const [queryError, setQueryError] = useState<string | null>(null);
+  const [isDebouncing, setIsDebouncing] = useState(false);
+  const MAX_RETRIES = 3;
+  const TIMEOUT_MS = 30000; // 30 seconds
 
   const vizOptions: VisualizationOptions = {
     "Material Usage Trends": "Create a line chart showing total material usage over time",
@@ -28,6 +34,41 @@ const Visualizations: React.FC = () => {
     "Top Offcuts": "Create a bar chart showing top 10 items by total offcut length",
     "Material Efficiency": "Create a visualization of top and bottom 5 materials by efficiency",
     "Create a Visualisation": null
+  };
+
+  
+  const validatePlotData = (data: any): boolean => {
+    if (!data || typeof data !== 'object') return false;
+    if (!Array.isArray(data.data)) return false;
+    if (typeof data.layout !== 'object') return false;
+    
+    // Check if data array contains valid trace objects
+    return data.data.every((trace: any) => (
+      typeof trace === 'object' && 
+      (Array.isArray(trace.x) || Array.isArray(trace.y))
+    ));
+  };
+
+  const validateVisualizationQuery = (query: string): { isValid: boolean; error: string | null } => {
+    if (!query.trim()) {
+      return { isValid: false, error: 'Query cannot be empty' };
+    }
+
+    if (query.trim().length < 10) {
+      return { isValid: false, error: 'Query must be at least 10 characters long' };
+    }
+
+    if (query.trim().length > 500) {
+      return { isValid: false, error: 'Query cannot exceed 500 characters' };
+    }
+
+    // Check for potentially harmful SQL keywords
+    const sqlKeywords = /\b(DELETE|DROP|TRUNCATE|ALTER|MODIFY|GRANT|REVOKE|EXEC|EXECUTE)\b/i;
+    if (sqlKeywords.test(query)) {
+      return { isValid: false, error: 'Query contains invalid keywords' };
+    }
+
+    return { isValid: true, error: null };
   };
 
   const generateVisualization = async () => {
@@ -44,30 +85,76 @@ const Visualizations: React.FC = () => {
         throw new Error("Please provide a visualization query");
       }
 
-      const response = await fetch('http://localhost:5000/api/visualizations/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ query_prompt: queryPrompt }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to generate visualization');
+      if (selectedViz === "Create a Visualisation") {
+        const { isValid, error } = validateVisualizationQuery(customQuery);
+        if (!isValid) {
+          throw new Error(error || 'Invalid query');
+        }
       }
 
-      const data = await response.json();
-      if (data.figure) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+      try {
+        const response = await fetch('http://localhost:5000/api/visualizations/create', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({ query_prompt: queryPrompt }),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Failed to generate visualization');
+        }
+
+        const data = await response.json();
+        
+        if (!data.figure || !validatePlotData(data.figure)) {
+          throw new Error('Invalid visualization data received');
+        }
+
         setPlotData(data.figure);
-      } else {
-        throw new Error('No visualization data received');
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') {
+          throw new Error('Request timed out. Please try again.');
+        }
+        throw err;
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
     }
+  };
+
+  const debouncedGenerateVisualization = async () => {
+    if (isDebouncing) return;
+    setIsDebouncing(true);
+    
+    let retries = 0;
+    while (retries < MAX_RETRIES) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+        
+        await generateVisualization();
+        clearTimeout(timeoutId);
+        break;
+      } catch (err) {
+        retries++;
+        if (retries === MAX_RETRIES) {
+          setError('Failed to generate visualization after multiple attempts');
+        }
+      }
+    }
+    
+    setTimeout(() => setIsDebouncing(false), 1000);
   };
 
   return (
@@ -100,20 +187,27 @@ const Visualizations: React.FC = () => {
       </Select>
 
       {selectedViz === "Create a Visualisation" && (
-        <TextField
-          fullWidth
-          multiline
-          rows={3}
-          value={customQuery}
-          onChange={(e) => setCustomQuery(e.target.value)}
-          placeholder="Example: Show me bar plots of the monthly trend of materials usage by total length used"
-          sx={{ mb: 2 }}
-        />
+        <>
+          <TextField
+            fullWidth
+            multiline
+            rows={3}
+            value={customQuery}
+            onChange={(e) => {
+              setCustomQuery(e.target.value);
+              setQueryError(null);
+            }}
+            placeholder="Example: Show me bar plots of the monthly trend of materials usage by total length used"
+            error={!!queryError}
+            helperText={queryError}
+            sx={{ mb: 2 }}
+          />
+        </>
       )}
 
       <Button 
         variant="contained" 
-        onClick={generateVisualization}
+        onClick={debouncedGenerateVisualization}
         disabled={loading || (!selectedViz || (selectedViz === "Create a Visualisation" && !customQuery))}
         sx={{ mb: 3 }}
       >
