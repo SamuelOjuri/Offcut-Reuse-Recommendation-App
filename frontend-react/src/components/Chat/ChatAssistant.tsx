@@ -43,7 +43,7 @@ const ChatAssistant: React.FC = () => {
 
   const streamResponse = async (prompt: string) => {
     try {
-      const response = await fetch('http://localhost:5000/api/chat/stream', {
+      const response = await fetch(`${API_URL}/api/chat/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -141,21 +141,7 @@ const ChatAssistant: React.FC = () => {
     return true;
   };
 
-  const sendMessage = async (message: string) => {
-    try {
-      const response = await fetch(`${API_URL}/api/chat/message`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ message }),
-      });
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      throw new Error('Failed to send message');
-    }
-  };
+
 
   return (
     <Box sx={{ 

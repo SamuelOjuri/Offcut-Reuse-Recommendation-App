@@ -77,6 +77,16 @@ const Visualizations: React.FC = () => {
     setLoading(true);
     setPlotData(null);
 
+    // Add validation for custom queries
+    if (selectedViz === "Create a Visualisation") {
+      const { isValid, error } = validateVisualizationQuery(customQuery);
+      if (!isValid) {
+        setError(error);
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
       const response = await fetch(`${API_URL}/api/visualizations/generate`, {
         method: 'POST',

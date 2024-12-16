@@ -2,7 +2,6 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import { Box, Link } from '@mui/material';
 import Navigation from './components/Navigation';
 import ChatAssistant from './components/Chat/ChatAssistant';
 import Recommender from './components/Recommender/Recommender';

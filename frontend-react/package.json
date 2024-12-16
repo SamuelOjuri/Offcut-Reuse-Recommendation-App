@@ -49,6 +49,7 @@
     ]
   },
   "devDependencies": {
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "@types/compression": "^1.7.2",
     "@types/helmet": "^4.0.0",
     "@types/react-plotly.js": "^2.6.3"
