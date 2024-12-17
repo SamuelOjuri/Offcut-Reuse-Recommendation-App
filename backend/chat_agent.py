@@ -16,48 +16,23 @@ TOGETHER_API_KEY = os.getenv('TOGETHER_API_KEY')
 #client = Together(api_key=TOGETHER_API_KEY)
 
 client = Together(
-    model="meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
+    model="Qwen/Qwen2.5-Coder-32B-Instruct",
+    #model="meta-llama/Meta-Llama-3.3-70B-Instruct-Turbo",
     #model="nvidia/Llama-3.1-Nemotron-70B-Instruct-HF",
     api_key=TOGETHER_API_KEY,
     max_tokens=4096
 )
 
-# Stream Chat
-# stream = client.chat.completions.create(
-#   model="meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
-#   messages=[{"role": "user", "content": "What are some fun things to do in New York?"}],
-#   stream=True,
-# )
 
-# for chunk in stream:
-#   print(chunk.choices[0].delta.content or "", end="", flush=True)
-
-# def generate_context(prompt: str):
-#     """
-#     Generates a contextual response based on the given prompt using the specified language model.
-#     Args:
-#         prompt (str): The input prompt to generate a response for.
-#     Returns:
-#         str: The generated response content from the language model.
-#     """
-#     response = client.chat.completions.create(
-#         model="meta-llama/Llama-3.2-3B-Instruct-Turbo",
-#         messages=[{"role": "user", "content": prompt}],
-#         temperature=0
-#     )
-#     return response.choices[0].message.content
-
-#print(generate_context(prompt))
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 db = SQLDatabase.from_uri(DATABASE_URL)
-# print(db.dialect)
-# print(db.get_usable_table_names())
+
 
 # Create Together LLM instance
 llm = Together(
-    #model="meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
+    #model="meta-llama/Meta-Llama-3.3-70B-Instruct-Turbo",
     #model="nvidia/Llama-3.1-Nemotron-70B-Instruct-HF",
     #model="meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
     model="Qwen/Qwen2.5-Coder-32B-Instruct",
@@ -66,7 +41,10 @@ llm = Together(
     api_key=TOGETHER_API_KEY,  # Set your API key
 )
 
+
+# Initialize the toolkit with model_rebuild
 toolkit = SQLDatabaseToolkit(db=db, llm=llm)
+toolkit.model_rebuild()
 
 tools = toolkit.get_tools()
 
