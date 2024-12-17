@@ -9,7 +9,8 @@ CORS(app, resources={
     r"/api/*": {
         "origins": [
             "http://localhost:3000",
-            "https://offcut-recommender.netlify.app"
+            "https://offcut-recommender.netlify.app",
+            "https://offcut-reuse-recommendation-app.onrender.com"
         ],
         "supports_credentials": True,
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]

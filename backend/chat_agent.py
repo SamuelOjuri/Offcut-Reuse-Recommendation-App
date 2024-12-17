@@ -12,8 +12,8 @@ from langchain_core.prompts import PromptTemplate
 load_dotenv()
 
 TOGETHER_API_KEY = os.getenv('TOGETHER_API_KEY')
-
-#client = Together(api_key=TOGETHER_API_KEY)
+if not TOGETHER_API_KEY:
+    raise ValueError("TOGETHER_API_KEY environment variable is required")
 
 client = Together(
     model="Qwen/Qwen2.5-Coder-32B-Instruct",
@@ -23,28 +23,36 @@ client = Together(
     max_tokens=4096
 )
 
-
-
 DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL environment variable is required")
 
-db = SQLDatabase.from_uri(DATABASE_URL)
+# Initialize database connection with error handling
+try:
+    db = SQLDatabase.from_uri(DATABASE_URL)
+except Exception as e:
+    print(f"Error connecting to database: {e}")
+    raise
 
+# Initialize LLM with error handling
+try:
+    llm = Together(
+        model="Qwen/Qwen2.5-Coder-32B-Instruct",
+        temperature=0.0,
+        max_tokens=4096,
+        api_key=TOGETHER_API_KEY,
+    )
+except Exception as e:
+    print(f"Error initializing LLM: {e}")
+    raise
 
-# Create Together LLM instance
-llm = Together(
-    #model="meta-llama/Meta-Llama-3.3-70B-Instruct-Turbo",
-    #model="nvidia/Llama-3.1-Nemotron-70B-Instruct-HF",
-    #model="meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
-    model="Qwen/Qwen2.5-Coder-32B-Instruct",
-    temperature=0.0,
-    max_tokens=4096,
-    api_key=TOGETHER_API_KEY,  # Set your API key
-)
-
-
-# Initialize the toolkit with model_rebuild
-toolkit = SQLDatabaseToolkit(db=db, llm=llm)
-toolkit.model_rebuild()
+# Initialize toolkit with error handling
+try:
+    toolkit = SQLDatabaseToolkit(db=db, llm=llm)
+    toolkit.model_rebuild()
+except Exception as e:
+    print(f"Error initializing toolkit: {e}")
+    raise
 
 tools = toolkit.get_tools()
 
