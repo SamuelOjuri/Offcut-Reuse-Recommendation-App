@@ -1,6 +1,8 @@
 from flask import Blueprint, request, jsonify, make_response
 from backend.graph import create_visualization
 import logging
+import psutil
+import gc
 
 visualization_bp = Blueprint('visualization_bp', __name__)
 
@@ -17,6 +19,14 @@ def handle_preflight():
 @visualization_bp.route('/generate', methods=['POST'])
 def create_visualization_route():
     try:
+        # Force garbage collection before processing
+        gc.collect()
+        
+        # Check available memory
+        mem = psutil.Process().memory_info().rss / 1024 / 1024  # in MB
+        if mem > 400:  # 400MB threshold
+            return make_response(jsonify({'error': 'Server is currently busy. Please try again later.'}), 503)
+            
         data = request.get_json()
         if not data:
             return make_response(jsonify({'error': 'No JSON data received'}), 400)

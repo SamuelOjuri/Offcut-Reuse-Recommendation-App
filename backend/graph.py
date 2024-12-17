@@ -8,6 +8,8 @@ import plotly.express as px
 from backend.chat_agent import llm, DATABASE_URL
 #from backend.chat_agent import DATABASE_URL  # Import your existing LLM and DB connection
 from datetime import datetime, timedelta
+import logging
+import gc
 
 # from dotenv import load_dotenv
 # load_dotenv()
@@ -73,122 +75,122 @@ def get_materials_data(force_refresh=False):
     return df
 
 def create_visualization(query_prompt: str):
-    df = get_materials_data()
-    
-    # Handle predefined visualizations
-    if query_prompt == "Create a line chart showing total material usage over time":
-        #daily_usage = df.groupby('batch_date')['total_length_used'].sum().reset_index()
-        # Convert batch_date to datetime and set it as index before grouping
-        daily_usage = df.copy()
-        daily_usage['batch_date'] = pd.to_datetime(daily_usage['batch_date'])
-        daily_usage.set_index('batch_date', inplace=True)
-        daily_usage = daily_usage.groupby(pd.Grouper(freq='W'))['total_length_used'].sum().reset_index()
-        daily_usage['batch_date'] = daily_usage['batch_date'].dt.strftime('%d %b %Y')
-
-        fig = px.line(
-            daily_usage,
-            x='batch_date',
-            y='total_length_used',
-            title='Material Usage Over Time',
-            labels={'batch_date': 'Date', 'total_length_used': 'Total Length Used (mm)'}
-        )
-
-        fig.update_xaxes(
-            tickangle=-45,
-            #dtick='M1', 
-            nticks=12,    # Show 12 evenly spaced ticks
-            showgrid=True
-        )
-
-        # Convert numpy types to native Python types
-        return _make_json_serializable(fig)
-    
-    elif query_prompt == "Create a bar chart showing the top 10 materials by Total Length Used":
-        top_materials = df.groupby('item_description')['total_length_used'].sum()\
-            .sort_values(ascending=False).head(10).reset_index()
-        fig = px.bar(top_materials,
-                     x='item_description',
-                     y='total_length_used',
-                     title='Top 10 Materials by Total Length Used',
-                     labels={'item_description': 'Item Description',
-                            'total_length_used': 'Total Length Used (mm)'})
+    try:
+        # Load data in smaller chunks
+        df = get_materials_data()
         
-        fig.update_xaxes(
-            tickangle=-35,
-        )
-
-        return _make_json_serializable(fig)
-    
-    elif query_prompt == "Create a bar chart showing top 10 items by total offcut length":
-        top_offcuts = df.groupby('item_description')['total_offcut_length_created'].sum()\
-            .sort_values(ascending=True).head(10).reset_index()
-        fig = px.bar(top_offcuts,
-                     x='total_offcut_length_created',
-                     y='item_description',
-                     orientation='h',
-                     title='Top 10 Items by Total Offcut Length Created',
-                     labels={'item_description': 'Item Description',
-                            'total_offcut_length_created': 'Total Offcut Length (mm)'})
+        if query_prompt == "Create a line chart showing total material usage over time":
+            # Process data in chunks to reduce memory usage
+            df['batch_date'] = pd.to_datetime(df['batch_date'])
+            
+            # Aggregate data immediately to reduce memory footprint
+            agg_data = (df.groupby('batch_date')['total_length_used']
+                       .sum()
+                       .resample('W')
+                       .sum()
+                       .reset_index())
+            
+            # Convert dates after aggregation
+            agg_data['batch_date'] = agg_data['batch_date'].dt.strftime('%d %b %Y')
+            
+            # Clear original dataframe from memory
+            del df
+            gc.collect()
+            
+            fig = px.line(agg_data, x='batch_date', y='total_length_used',
+                         title='Material Usage Over Time',
+                         labels={'batch_date': 'Date', 
+                                'total_length_used': 'Total Length Used (mm)'})
+            
+            fig.update_xaxes(tickangle=-45, nticks=12)
+            del agg_data
+            return _make_json_serializable(fig)
         
-        fig.update_yaxes(
-            tickangle=-5,
-        )
-
-        return _make_json_serializable(fig)
-    
-    elif query_prompt == "Create a visualization of top and bottom 5 materials by efficiency":
-        # Group by item_description and calculate mean efficiency
-        avg_efficiency = df.groupby('item_description')['usage_efficiency'].mean()
+        elif query_prompt == "Create a bar chart showing the top 10 materials by Total Length Used":
+            # Aggregate immediately to reduce memory
+            top_materials = (df.groupby('item_description')['total_length_used']
+                           .sum()
+                           .sort_values(ascending=False)
+                           .head(10)
+                           .reset_index())
+            
+            del df
+            gc.collect()
+            
+            fig = px.bar(top_materials,
+                        x='item_description',
+                        y='total_length_used',
+                        title='Top 10 Materials by Total Length Used',
+                        labels={'item_description': 'Item Description',
+                               'total_length_used': 'Total Length Used (mm)'})
+            
+            fig.update_xaxes(tickangle=-35)
+            del top_materials
+            return _make_json_serializable(fig)
         
-        # Get top and bottom 5
-        top_5 = avg_efficiency.nlargest(5)
-        bottom_5 = avg_efficiency.nsmallest(5).sort_values(ascending=False)
-
-        # Combine and reset index
-        efficiency_data = pd.concat([top_5, bottom_5]).reset_index()
+        elif query_prompt == "Create a bar chart showing top 10 items by total offcut length":
+            # Aggregate immediately to reduce memory
+            top_offcuts = (df.groupby('item_description')['total_offcut_length_created']
+                          .sum()
+                          .sort_values(ascending=True)
+                          .head(10)
+                          .reset_index())
+            
+            del df
+            gc.collect()
+            
+            fig = px.bar(top_offcuts,
+                        x='total_offcut_length_created',
+                        y='item_description',
+                        orientation='h',
+                        title='Top 10 Items by Total Offcut Length Created',
+                        labels={'item_description': 'Item Description',
+                               'total_offcut_length_created': 'Total Offcut Length (mm)'})
+            
+            fig.update_yaxes(tickangle=-5)
+            del top_offcuts
+            return _make_json_serializable(fig)
         
-        # Create color list (5 green, 5 red)
-        #colors = ['lightgreen']*5 + ['lightcoral']*5
-        colors = ['green']*5 + ['red']*5
+        elif query_prompt == "Create a visualization of top and bottom 5 materials by efficiency":
+            # Aggregate immediately to reduce memory
+            avg_efficiency = df.groupby('item_description')['usage_efficiency'].mean()
+            del df
+            gc.collect()
+            
+            # Get top and bottom 5
+            top_5 = avg_efficiency.nlargest(5)
+            bottom_5 = avg_efficiency.nsmallest(5)
+            del avg_efficiency
+            
+            # Combine and reset index
+            efficiency_data = pd.concat([top_5, bottom_5]).reset_index()
+            del top_5, bottom_5
+            gc.collect()
+            
+            colors = ['green']*5 + ['red']*5
+            
+            fig = px.bar(efficiency_data,
+                        x='usage_efficiency',
+                        y='item_description',
+                        orientation='h',
+                        title='Top and Bottom 5 Materials by Usage Efficiency',
+                        labels={'item_description': 'Item Description',
+                               'usage_efficiency': 'Usage Efficiency (%)'})
+            
+            fig.update_traces(marker_color=colors)
+            fig.update_layout(yaxis={'autorange': 'reversed'})
+            fig.update_yaxes(tickangle=-5)
+            
+            del efficiency_data
+            return _make_json_serializable(fig)
         
-        # Create horizontal bar chart
-        fig = px.bar(efficiency_data,
-                    x='usage_efficiency',
-                    y='item_description',
-                    orientation='h',
-                    title='Top and Bottom 5 Materials by Usage Efficiency',
-                    labels={'item_description': 'Item Description',
-                           'usage_efficiency': 'Usage Efficiency (%)'})
-        
-        # Update the colors and reverse the y-axis
-        fig.update_traces(marker_color=colors)
-        fig.update_layout(yaxis={'autorange': 'reversed'})
-        fig.update_yaxes(
-            tickangle=-5,
-        )
-        
-        return _make_json_serializable(fig)
-    
-    # Handle custom queries using PandasAI
-    else:
-        smart_df = SmartDataframe(df, config={'llm': llm})
-        enhanced_prompt = f"""
-        Create a Plotly visualization for: {query_prompt}
-        Use Plotly Express (px) to create the visualization.
-        Return ONLY the Plotly figure object.
-        Do not show the plot, just return the figure object.
-        Make sure to include a descriptive title and proper axis labels.
-        """
-        
-        try:
-            result = smart_df.chat(enhanced_prompt)
-            if hasattr(result, 'update_layout'):  # Check if it's a Plotly figure
-                return _make_json_serializable(result)
-            else:
-                raise ValueError("Generated result is not a Plotly figure")
-        except Exception as e:
-            print(f"Error in create_visualization: {str(e)}")
-            raise Exception("Failed to generate custom visualization. Please try a different query.")
+        # Custom queries are disabled to prevent memory issues
+        else:
+            raise Exception("Custom visualizations are temporarily disabled to conserve memory")
+            
+    except Exception as e:
+        logging.error(f"Visualization error: {str(e)}")
+        raise Exception("Failed to generate visualization due to memory constraints")
 
 def _make_json_serializable(fig):
     """Convert a Plotly figure to JSON-serializable format"""
