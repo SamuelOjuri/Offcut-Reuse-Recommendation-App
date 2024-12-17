@@ -13,12 +13,14 @@ CORS(app, resources={
             "https://offcut-reuse-recommendation-app.onrender.com"
         ],
         "supports_credentials": True,
-        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "expose_headers": ["Content-Range", "X-Content-Range"]
     }
 })
 
 Talisman(app, 
-    force_https=False,
+    #force_https=False,
     content_security_policy={
         'default-src': "'self'",
         'script-src': "'self'",
