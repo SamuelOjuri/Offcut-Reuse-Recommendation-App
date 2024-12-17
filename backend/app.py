@@ -15,7 +15,8 @@ CORS(app, resources={
         "supports_credentials": True,
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization"],
-        "expose_headers": ["Content-Range", "X-Content-Range"]
+        "expose_headers": ["Content-Range", "X-Content-Range"],
+        "max_age": 3600
     }
 })
 

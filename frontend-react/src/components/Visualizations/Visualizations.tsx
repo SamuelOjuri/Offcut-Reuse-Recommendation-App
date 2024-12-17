@@ -50,42 +50,32 @@ const Visualizations: React.FC = () => {
     ));
   };
 
-  const validateVisualizationQuery = (query: string): { isValid: boolean; error: string | null } => {
-    if (!query.trim()) {
-      return { isValid: false, error: 'Query cannot be empty' };
-    }
+  // const validateVisualizationQuery = (query: string): { isValid: boolean; error: string | null } => {
+  //   if (!query.trim()) {
+  //     return { isValid: false, error: 'Query cannot be empty' };
+  //   }
 
-    if (query.trim().length < 10) {
-      return { isValid: false, error: 'Query must be at least 10 characters long' };
-    }
+  //   if (query.trim().length < 10) {
+  //     return { isValid: false, error: 'Query must be at least 10 characters long' };
+  //   }
 
-    if (query.trim().length > 500) {
-      return { isValid: false, error: 'Query cannot exceed 500 characters' };
-    }
+  //   if (query.trim().length > 500) {
+  //     return { isValid: false, error: 'Query cannot exceed 500 characters' };
+  //   }
 
-    // Check for potentially harmful SQL keywords
-    const sqlKeywords = /\b(DELETE|DROP|TRUNCATE|ALTER|MODIFY|GRANT|REVOKE|EXEC|EXECUTE)\b/i;
-    if (sqlKeywords.test(query)) {
-      return { isValid: false, error: 'Query contains invalid keywords' };
-    }
+  //   // Check for potentially harmful SQL keywords
+  //   const sqlKeywords = /\b(DELETE|DROP|TRUNCATE|ALTER|MODIFY|GRANT|REVOKE|EXEC|EXECUTE)\b/i;
+  //   if (sqlKeywords.test(query)) {
+  //     return { isValid: false, error: 'Query contains invalid keywords' };
+  //   }
 
-    return { isValid: true, error: null };
-  };
+  //   return { isValid: true, error: null };
+  // };
 
   const generateVisualization = async () => {
     setError(null);
     setLoading(true);
     setPlotData(null);
-
-    // Add validation for custom queries
-    if (selectedViz === "Create a Visualisation") {
-      const { isValid, error } = validateVisualizationQuery(customQuery);
-      if (!isValid) {
-        setError(error);
-        setLoading(false);
-        return;
-      }
-    }
 
     try {
       const response = await fetch(`${API_URL}/api/visualizations/generate`, {
@@ -94,7 +84,6 @@ const Visualizations: React.FC = () => {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        mode: 'cors',
         credentials: 'include',
         body: JSON.stringify({
           query: selectedViz === "Create a Visualisation" ? customQuery : vizOptions[selectedViz]
@@ -102,7 +91,8 @@ const Visualizations: React.FC = () => {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.error || `HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
