@@ -84,6 +84,7 @@ const Visualizations: React.FC = () => {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
+        mode: 'cors',
         credentials: 'include',
         body: JSON.stringify({
           query: selectedViz === "Create a Visualisation" ? customQuery : vizOptions[selectedViz]
@@ -103,6 +104,7 @@ const Visualizations: React.FC = () => {
 
       setPlotData(data.figure);
     } catch (err) {
+      console.error('Visualization error:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
