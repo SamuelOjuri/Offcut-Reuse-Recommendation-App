@@ -84,7 +84,7 @@ const Visualizations: React.FC = () => {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        mode: 'cors',
+        mode: 'no-cors',
         credentials: 'include',
         body: JSON.stringify({
           query: selectedViz === "Create a Visualisation" ? customQuery : vizOptions[selectedViz]
