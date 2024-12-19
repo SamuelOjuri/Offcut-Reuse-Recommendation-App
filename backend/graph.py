@@ -6,10 +6,9 @@ import pandas as pd
 from sqlalchemy import create_engine
 import plotly.express as px
 from backend.chat_agent import llm, DATABASE_URL
-#from backend.chat_agent import DATABASE_URL  # Import your existing LLM and DB connection
-from datetime import datetime, timedelta
 import logging
 import gc
+from sqlalchemy import text
 
 # from dotenv import load_dotenv
 # load_dotenv()
@@ -19,103 +18,119 @@ import gc
 # llm = ChatOpenAI(model="gpt-4o", api_key=openai_api_key)  # Example: Replace 'gpt-4' with your desired model
 
 
-def get_materials_data(force_refresh=False):
-    """Get materials data from cache or database"""
-    cache_file = "cache/materials_data.csv"
-    cache_max_age = timedelta(hours=24)  # Cache expires after 24 hours
-    
-    # Create cache directory if it doesn't exist
-    os.makedirs('cache', exist_ok=True)
-    
-    # Check if cache exists and is fresh
-    if not force_refresh and os.path.exists(cache_file):
-        # Check cache age
-        cache_age = datetime.now() - datetime.fromtimestamp(os.path.getmtime(cache_file))
-        if cache_age < cache_max_age:
-            return pd.read_csv(cache_file, parse_dates=['batch_date'])
-    
-    # Define the query
-    query = """
-        SELECT 
-            b.batch_code,
-            b.batch_date,
-            bd.saw_name,
-            i.item_code,
-            i.item_description,
-            bi.double_cut,
-            bi.quantity,
-            bi.input_bar_length_mm as input_bar_length,
-            (bi.quantity * bi.input_bar_length_mm) as total_input_length,
-            bi.bar_length_used_mm as bar_length_used,
-            bi.total_length_used_mm as total_length_used,
-            bi.offcut_length_created_mm as offcut_length_created,
-            bi.total_offcut_length_created_mm as total_offcut_length_created,
-            bi.usage_efficiency,
-            bi.waste_percentage
-        FROM batches b
-        JOIN batch_details bd ON b.batch_id = bd.batch_id
-        JOIN batch_items bi ON b.batch_id = bi.batch_id
-        JOIN items i ON bi.item_id = i.item_id
-        ORDER BY b.batch_date DESC
-    """
-    
-    # Create engine and connect to database
-    engine = create_engine(DATABASE_URL)
+def get_materials_data(force_refresh=False, chunk_size=1000):
+    """Get materials data with chunking support"""
     try:
-        # Use text() to properly handle the SQL query
-        from sqlalchemy import text
+        engine = create_engine(DATABASE_URL)
         with engine.connect() as connection:
-            df = pd.read_sql(text(query), connection)
+            # Test query first
+            test_query = "SELECT COUNT(*) FROM batch_items"
+            result = connection.execute(text(test_query)).scalar()
+            print(f"Number of records in batch_items: {result}")
+            
+            if result == 0:
+                raise Exception("No records found in batch_items table")
+            
+            # Query with proper JOINs
+            query = text("""
+                SELECT b.batch_date, i.item_description, 
+                       bi.total_length_used_mm as total_length_used,
+                       bi.total_offcut_length_created_mm as total_offcut_length_created,
+                       bi.usage_efficiency
+                FROM batch_items bi
+                JOIN batches b ON bi.batch_id = b.batch_id
+                JOIN items i ON bi.item_id = i.item_id
+                ORDER BY b.batch_date
+            """)
+            
+            # Execute query with chunking
+            result = connection.execution_options(stream_results=True).execute(query)
+            while True:
+                chunk = result.fetchmany(chunk_size)
+                if not chunk:
+                    break
+                df_chunk = pd.DataFrame(chunk)
+                if not df_chunk.empty:
+                    yield df_chunk
+                    
+    except Exception as e:
+        logging.error(f"Database error in get_materials_data: {str(e)}")
+        raise
     finally:
         engine.dispose()
-    
-    # Save to cache
-    df.to_csv(cache_file, index=False)
-    
-    return df
 
 def create_visualization(query_prompt: str):
     try:
-        # Load data in smaller chunks
-        df = get_materials_data()
+        chunks = list(get_materials_data())
         
-        if query_prompt == "Create a line chart showing total material usage over time":
-            # Process data in chunks to reduce memory usage
-            df['batch_date'] = pd.to_datetime(df['batch_date'])
+        if not chunks:
+            raise Exception("No data available in the database")
             
-            # Aggregate data immediately to reduce memory footprint
-            agg_data = (df.groupby('batch_date')['total_length_used']
-                       .sum()
-                       .resample('W')
+        if query_prompt == "Create a line chart showing total material usage over time":
+            all_data = []
+            
+            for chunk in chunks:
+                if chunk.empty:
+                    continue
+                    
+                try:
+                    # Convert batch_date to datetime and format as string immediately
+                    chunk['batch_date'] = pd.to_datetime(chunk['batch_date']).dt.strftime('%Y-%m-%d')
+                    chunk_data = (chunk.groupby('batch_date')['total_length_used']
+                                .sum()
+                                .reset_index())
+                    all_data.append(chunk_data)
+                except Exception as e:
+                    logging.error(f"Error processing chunk: {str(e)}")
+                    continue
+            
+            if not all_data:
+                raise Exception("No valid data available for visualization")
+                
+            agg_data = pd.concat(all_data, ignore_index=True)
+            agg_data = (agg_data.groupby('batch_date')['total_length_used']
                        .sum()
                        .reset_index())
             
-            # Convert dates after aggregation
-            agg_data['batch_date'] = agg_data['batch_date'].dt.strftime('%d %b %Y')
+            # Sort by date string
+            agg_data = agg_data.sort_values('batch_date')
             
-            # Clear original dataframe from memory
-            del df
+            fig = px.line(
+                agg_data,
+                x='batch_date',
+                y='total_length_used',
+                title='Material Usage Over Time',
+                labels={
+                    'batch_date': 'Date',
+                    'total_length_used': 'Total Length Used (mm)'
+                }
+            )
+            
+            fig.update_xaxes(tickangle=-45, dtick='M1', nticks=12)
+            
+            del agg_data
             gc.collect()
             
-            fig = px.line(agg_data, x='batch_date', y='total_length_used',
-                         title='Material Usage Over Time',
-                         labels={'batch_date': 'Date', 
-                                'total_length_used': 'Total Length Used (mm)'})
-            
-            fig.update_xaxes(tickangle=-45, nticks=12)
-            del agg_data
             return _make_json_serializable(fig)
         
         elif query_prompt == "Create a bar chart showing the top 10 materials by Total Length Used":
-            # Aggregate immediately to reduce memory
-            top_materials = (df.groupby('item_description')['total_length_used']
-                           .sum()
+            # Process chunks individually and maintain running totals
+            material_totals = {}
+            
+            for chunk in chunks:
+                # Process each chunk
+                chunk_totals = chunk.groupby('item_description')['total_length_used'].sum()
+                
+                # Update running totals
+                for material, total in chunk_totals.items():
+                    material_totals[material] = material_totals.get(material, 0) + total
+            
+            # Convert to DataFrame and get top 10
+            top_materials = (pd.Series(material_totals)
                            .sort_values(ascending=False)
                            .head(10)
                            .reset_index())
-            
-            del df
-            gc.collect()
+            top_materials.columns = ['item_description', 'total_length_used']
             
             fig = px.bar(top_materials,
                         x='item_description',
@@ -125,19 +140,26 @@ def create_visualization(query_prompt: str):
                                'total_length_used': 'Total Length Used (mm)'})
             
             fig.update_xaxes(tickangle=-35)
-            del top_materials
             return _make_json_serializable(fig)
         
         elif query_prompt == "Create a bar chart showing top 10 items by total offcut length":
-            # Aggregate immediately to reduce memory
-            top_offcuts = (df.groupby('item_description')['total_offcut_length_created']
-                          .sum()
+            # Process chunks individually and maintain running totals
+            offcut_totals = {}
+            
+            for chunk in chunks:
+                # Process each chunk
+                chunk_totals = chunk.groupby('item_description')['total_offcut_length_created'].sum()
+                
+                # Update running totals
+                for item, total in chunk_totals.items():
+                    offcut_totals[item] = offcut_totals.get(item, 0) + total
+            
+            # Convert to DataFrame and get top 10
+            top_offcuts = (pd.Series(offcut_totals)
                           .sort_values(ascending=True)
                           .head(10)
                           .reset_index())
-            
-            del df
-            gc.collect()
+            top_offcuts.columns = ['item_description', 'total_offcut_length_created']
             
             fig = px.bar(top_offcuts,
                         x='total_offcut_length_created',
@@ -148,24 +170,45 @@ def create_visualization(query_prompt: str):
                                'total_offcut_length_created': 'Total Offcut Length (mm)'})
             
             fig.update_yaxes(tickangle=-5)
-            del top_offcuts
             return _make_json_serializable(fig)
         
         elif query_prompt == "Create a visualization of top and bottom 5 materials by efficiency":
-            # Aggregate immediately to reduce memory
-            avg_efficiency = df.groupby('item_description')['usage_efficiency'].mean()
-            del df
-            gc.collect()
+            # Process chunks individually and maintain running averages
+            efficiency_totals = {}
+            efficiency_counts = {}
+            
+            for chunk in chunks:
+                # Process each chunk
+                chunk_groups = chunk.groupby('item_description')
+                
+                # Update running totals and counts for calculating mean
+                for name, group in chunk_groups:
+                    # Convert usage_efficiency to numeric, handling any non-numeric values
+                    eff_values = pd.to_numeric(group['usage_efficiency'], errors='coerce')
+                    eff_sum = eff_values.sum()
+                    eff_count = eff_values.count()  # Only counts non-null values
+                    
+                    if eff_count > 0:  # Only update if we have valid values
+                        efficiency_totals[name] = efficiency_totals.get(name, 0) + eff_sum
+                        efficiency_counts[name] = efficiency_counts.get(name, 0) + eff_count
+            
+            # Calculate averages and ensure numeric type
+            avg_efficiency = {
+                name: float(efficiency_totals[name] / efficiency_counts[name])
+                for name in efficiency_totals.keys()
+                if efficiency_counts[name] > 0
+            }
+            
+            # Convert to Series with explicit numeric dtype
+            avg_efficiency = pd.Series(avg_efficiency, dtype=float)
             
             # Get top and bottom 5
             top_5 = avg_efficiency.nlargest(5)
             bottom_5 = avg_efficiency.nsmallest(5)
-            del avg_efficiency
             
             # Combine and reset index
             efficiency_data = pd.concat([top_5, bottom_5]).reset_index()
-            del top_5, bottom_5
-            gc.collect()
+            efficiency_data.columns = ['item_description', 'usage_efficiency']
             
             colors = ['green']*5 + ['red']*5
             
@@ -181,16 +224,14 @@ def create_visualization(query_prompt: str):
             fig.update_layout(yaxis={'autorange': 'reversed'})
             fig.update_yaxes(tickangle=-5)
             
-            del efficiency_data
             return _make_json_serializable(fig)
         
-        # Custom queries are disabled to prevent memory issues
         else:
-            raise Exception("Custom visualizations are temporarily disabled to conserve memory")
+            raise Exception("Invalid visualization type selected")
             
     except Exception as e:
         logging.error(f"Visualization error: {str(e)}")
-        raise Exception("Failed to generate visualization due to memory constraints")
+        raise
 
 def _make_json_serializable(fig):
     """Convert a Plotly figure to JSON-serializable format"""
@@ -214,4 +255,3 @@ def _make_json_serializable(fig):
     
     # Convert all numpy types in the figure dict
     return convert_numpy(fig_dict)
-

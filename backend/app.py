@@ -17,7 +17,7 @@ CORS(app, resources={
 })
 
 Talisman(app, 
-    #force_https=True,
+    force_https=True,
     content_security_policy={
         'default-src': "'self'",
         'script-src': "'self'",
