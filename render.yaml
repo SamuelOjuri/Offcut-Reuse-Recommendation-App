@@ -6,19 +6,17 @@ services:
     startCommand: >
       gunicorn wsgi:app 
       --workers=1 
-      --threads=1 
-      --timeout=120 
-      --max-requests=100 
-      --max-requests-jitter=20
-      --worker-class=sync
+      --threads=2
+      --timeout=60
+      --max-requests=50
+      --max-requests-jitter=10
+      --worker-class=gthread
       --worker-tmp-dir=/dev/shm
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
-      - key: FLASK_ENV
-        value: production
-      - key: ALLOWED_ORIGINS
-        value: https://offcut-recommender.netlify.app
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: MPLBACKEND
+        value: "Agg"
     resources:
       memory: 512MB
       cpu: 0.5

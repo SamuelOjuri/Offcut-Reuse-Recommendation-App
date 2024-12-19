@@ -20,21 +20,18 @@ interface VisualizationOptions {
 
 const Visualizations: React.FC = () => {
   const [selectedViz, setSelectedViz] = useState('');
-  const [customQuery, setCustomQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [plotData, setPlotData] = useState<any>(null);
-  const [queryError, setQueryError] = useState<string | null>(null);
   const [isDebouncing, setIsDebouncing] = useState(false);
   const MAX_RETRIES = 3;
   const TIMEOUT_MS = 30000; // 30 seconds
 
-  const vizOptions: VisualizationOptions = {
+  const vizOptions: { [key: string]: string } = {
     "Material Usage Trends": "Create a line chart showing total material usage over time",
     "Top Materials": "Create a bar chart showing the top 10 materials by Total Length Used",
     "Top Offcuts": "Create a bar chart showing top 10 items by total offcut length",
-    "Material Efficiency": "Create a visualization of top and bottom 5 materials by efficiency",
-    "Create a Visualisation": null
+    "Material Efficiency": "Create a visualization of top and bottom 5 materials by efficiency"
   };
 
   
@@ -50,32 +47,13 @@ const Visualizations: React.FC = () => {
     ));
   };
 
-  // const validateVisualizationQuery = (query: string): { isValid: boolean; error: string | null } => {
-  //   if (!query.trim()) {
-  //     return { isValid: false, error: 'Query cannot be empty' };
-  //   }
-
-  //   if (query.trim().length < 10) {
-  //     return { isValid: false, error: 'Query must be at least 10 characters long' };
-  //   }
-
-  //   if (query.trim().length > 500) {
-  //     return { isValid: false, error: 'Query cannot exceed 500 characters' };
-  //   }
-
-  //   // Check for potentially harmful SQL keywords
-  //   const sqlKeywords = /\b(DELETE|DROP|TRUNCATE|ALTER|MODIFY|GRANT|REVOKE|EXEC|EXECUTE)\b/i;
-  //   if (sqlKeywords.test(query)) {
-  //     return { isValid: false, error: 'Query contains invalid keywords' };
-  //   }
-
-  //   return { isValid: true, error: null };
-  // };
-
   const generateVisualization = async () => {
     setError(null);
     setLoading(true);
     setPlotData(null);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
     try {
       const response = await fetch(`${API_URL}/api/visualizations/generate`, {
@@ -84,22 +62,28 @@ const Visualizations: React.FC = () => {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        // mode: 'cors',
         credentials: 'include',
         body: JSON.stringify({
-          query: selectedViz === "Create a Visualisation" ? customQuery : vizOptions[selectedViz]
+          query: vizOptions[selectedViz]
         }),
+        signal: controller.signal
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.error || `HTTP error! status: ${response.status}`);
+      if (!response.ok) throw new Error('Failed to fetch visualization data');
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('Streaming not supported');
+
+      let result = '';
+      while (true) {
+        const {done, value} = await reader.read();
+        if (done) break;
+        result += new TextDecoder().decode(value);
       }
 
-      const data = await response.json();
-      
+      const data = JSON.parse(result);
       if (!data.figure || !validatePlotData(data.figure)) {
-        throw new Error('Invalid visualization data received');
+        throw new Error('Invalid visualization data');
       }
 
       setPlotData(data.figure);
@@ -107,6 +91,7 @@ const Visualizations: React.FC = () => {
       console.error('Visualization error:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   };
@@ -152,7 +137,6 @@ const Visualizations: React.FC = () => {
         value={selectedViz}
         onChange={(e) => {
           setSelectedViz(e.target.value);
-          setCustomQuery('');
           setPlotData(null);
         }}
         sx={{ mb: 2 }}
@@ -164,29 +148,10 @@ const Visualizations: React.FC = () => {
         ))}
       </Select>
 
-      {selectedViz === "Create a Visualisation" && (
-        <>
-          <TextField
-            fullWidth
-            multiline
-            rows={3}
-            value={customQuery}
-            onChange={(e) => {
-              setCustomQuery(e.target.value);
-              setQueryError(null);
-            }}
-            placeholder="Example: Show me bar plots of the monthly trend of materials usage by total length used"
-            error={!!queryError}
-            helperText={queryError}
-            sx={{ mb: 2 }}
-          />
-        </>
-      )}
-
       <Button 
         variant="contained" 
         onClick={debouncedGenerateVisualization}
-        disabled={loading || (!selectedViz || (selectedViz === "Create a Visualisation" && !customQuery))}
+        disabled={loading || !selectedViz}
         sx={{ mb: 3 }}
       >
         {loading ? <CircularProgress size={24} /> : 'Generate Visualization'}
