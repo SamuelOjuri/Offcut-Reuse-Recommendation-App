@@ -230,7 +230,7 @@ const Reports: React.FC = () => {
                     type: 'number', 
                     flex: 1,
                     valueFormatter: (params: { value: number }) => {
-                      return params.value.toString();
+                      return params.value?.toString() || '';
                     }
                   },
                   { field: 'length_mm', headerName: 'Length (mm)', type: 'number', flex: 1 },
