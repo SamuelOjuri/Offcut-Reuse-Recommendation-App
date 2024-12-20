@@ -229,7 +229,7 @@ const Reports: React.FC = () => {
                     headerName: 'Offcut ID', 
                     type: 'number', 
                     flex: 1,
-                    valueFormatter: (params: { value: number }) => params.value.toString()
+                    valueFormatter: (params: { value: number }) => Number(params.value).toFixed(0)
                   },
                   { field: 'length_mm', headerName: 'Length (mm)', type: 'number', flex: 1 },
                   { field: 'quantity', headerName: 'Quantity Available', type: 'number', flex: 1 }
