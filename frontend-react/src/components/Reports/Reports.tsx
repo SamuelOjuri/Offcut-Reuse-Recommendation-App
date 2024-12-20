@@ -224,13 +224,7 @@ const Reports: React.FC = () => {
                 rows={filteredOffcuts.map((row, index) => ({ id: index, ...row }))}
                 columns={[
                   { field: 'material_profile', headerName: 'Material Profile', flex: 1 },
-                  { 
-                    field: 'legacy_offcut_id', 
-                    headerName: 'Offcut ID', 
-                    type: 'number', 
-                    flex: 1,
-                    valueFormatter: (params: { value: number }) => Number(params.value).toFixed(0)
-                  },
+                  { field: 'legacy_offcut_id', headerName: 'Offcut ID', type: 'number', flex: 1 },
                   { field: 'length_mm', headerName: 'Length (mm)', type: 'number', flex: 1 },
                   { field: 'quantity', headerName: 'Quantity Available', type: 'number', flex: 1 }
                 ]}
