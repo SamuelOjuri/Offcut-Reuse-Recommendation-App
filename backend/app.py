@@ -7,7 +7,11 @@ from flask_talisman import Talisman
 app = Flask(__name__)
 CORS(app, resources={
     r"/api/*": {
-        "origins": ["https://offcut-recommender.netlify.app", "http://localhost:3000"],
+        "origins": [
+            "http://localhost:3000",
+            "https://offcut-reuse-recommendation-app.onrender.com",
+            "https://offcut-recommender.netlify.app"
+        ],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization", "Accept"],
         "supports_credentials": True,

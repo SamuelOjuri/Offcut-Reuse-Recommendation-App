@@ -45,12 +45,14 @@ def get_offcuts_inventory():
         query = db.session.query(
             Offcut.material_profile,
             Offcut.length_mm,
+            Offcut.legacy_offcut_id,
             func.count(Offcut.offcut_id).label('quantity')
         ).filter(
             Offcut.is_available == True
         ).group_by(
             Offcut.material_profile,
-            Offcut.length_mm
+            Offcut.length_mm,
+            Offcut.legacy_offcut_id
         ).order_by(
             Offcut.material_profile,
             Offcut.length_mm.desc()
@@ -60,7 +62,8 @@ def get_offcuts_inventory():
             {
                 'material_profile': row[0],
                 'length_mm': row[1],
-                'quantity': row[2]
+                'legacy_offcut_id': row[2],
+                'quantity': row[3]
             }
             for row in query
         ]
