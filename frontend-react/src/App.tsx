@@ -9,20 +9,33 @@ import Visualizations from './components/Visualizations/Visualizations';
 import Reports from './components/Reports/Reports';
 import Admin from './components/Admin/Admin';
 import { theme } from './styles/theme';
+import { AuthProvider } from './components/Auth/AuthContext';
+import ProtectedRoute from './components/Auth/ProtectedRoute';
+import Login from './components/Auth/Login';
 
 const App: React.FC = () => {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <Navigation />
-      <Routes>
-        <Route path="/" element={<ChatAssistant />} />
-        <Route path="/recommender" element={<Recommender />} />
-        <Route path="/visualizations" element={<Visualizations />} />
-        <Route path="/reports" element={<Reports />} />
-        <Route path="/admin" element={<Admin />} />
-      </Routes>
-    </ThemeProvider>
+    <AuthProvider>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <Navigation />
+        <Routes>
+          <Route path="/" element={<ChatAssistant />} />
+          <Route path="/recommender" element={<Recommender />} />
+          <Route path="/visualizations" element={<Visualizations />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/login" element={<Login />} />
+          <Route 
+            path="/admin" 
+            element={
+              <ProtectedRoute>
+                <Admin />
+              </ProtectedRoute>
+            } 
+          />
+        </Routes>
+      </ThemeProvider>
+    </AuthProvider>
   );
 };
 

@@ -12,10 +12,10 @@ const root = ReactDOM.createRoot(
 
 root.render(
   <React.StrictMode>
-    <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <BrowserRouter>
+    <BrowserRouter>
+      <LocalizationProvider dateAdapter={AdapterDateFns}>
         <App />
-      </BrowserRouter>
-    </LocalizationProvider>
+      </LocalizationProvider>
+    </BrowserRouter>
   </React.StrictMode>
 );

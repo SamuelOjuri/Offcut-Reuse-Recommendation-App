@@ -1,0 +1,19 @@
+{
+  "dependencies": {
+    "@date-io/date-fns": "^3.2.0",
+    "@mui/x-date-pickers": "^7.24.1",
+    "date-fns": "^4.1.0",
+    "react-feather": "^2.0.10",
+    "react-scripts": "^5.0.1"
+  },
+  "devDependencies": {
+    "rimraf": "^3.0.2"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "clean": "rimraf build"
+  }
+}
