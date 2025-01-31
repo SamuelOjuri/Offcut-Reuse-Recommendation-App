@@ -10,9 +10,11 @@ import { auth } from '../config/firebase';
 
 interface AuthContextType {
   currentUser: User | null;
+  isAdmin: boolean;
   signup: (email: string, password: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  checkAdminPassword: (password: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -27,6 +29,7 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -38,6 +41,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return unsubscribe;
   }, []);
 
+  const checkAdminPassword = async (password: string): Promise<boolean> => {
+    // In production, validate against backend
+    const correctPassword = 'admin123';
+    const success = password === correctPassword;
+    if (success) {
+      setIsAdmin(true);
+      localStorage.setItem('isAdmin', 'true');
+    }
+    return success;
+  };
+
   const signup = async (email: string, password: string) => {
     await createUserWithEmailAndPassword(auth, email, password);
   };
@@ -47,7 +61,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await signInWithEmailAndPassword(auth, email, password);
     } catch (error: any) {
       console.error('Login error:', error);
-      throw error; // Re-throw to be handled by the Login component
+      throw error;
     }
   };
 
@@ -57,9 +71,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const value = {
     currentUser,
+    isAdmin,
     signup,
     login,
-    logout
+    logout,
+    checkAdminPassword
   };
 
   return (

@@ -1,19 +1,28 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AppBar, Toolbar, Button, Box } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import AdminAuthModal from './Admin/AdminAuthModal';
 
 const Navigation: React.FC = () => {
   const navigate = useNavigate();
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, isAdmin, checkAdminPassword } = useAuth();
+  const [showAdminAuth, setShowAdminAuth] = useState(false);
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-      navigate('/login');
-    } catch (error) {
-      console.error('Failed to log out:', error);
+  const handleAdminClick = () => {
+    if (isAdmin) {
+      navigate('/admin');
+    } else {
+      setShowAdminAuth(true);
     }
+  };
+
+  const handleAdminAuth = async (password: string) => {
+    const success = await checkAdminPassword(password);
+    if (success) {
+      navigate('/admin');
+    }
+    return success;
   };
 
   return (
@@ -32,12 +41,22 @@ const Navigation: React.FC = () => {
           <Button color="inherit" onClick={() => navigate('/reports')}>
             Reports
           </Button>
+          {currentUser && (
+            <Button color="inherit" onClick={handleAdminClick}>
+              Admin
+            </Button>
+          )}
         </Box>
         {currentUser && (
-          <Button color="inherit" onClick={handleLogout}>
+          <Button color="inherit" onClick={logout}>
             Logout
           </Button>
         )}
+        <AdminAuthModal
+          open={showAdminAuth}
+          onClose={() => setShowAdminAuth(false)}
+          onAuthenticate={handleAdminAuth}
+        />
       </Toolbar>
     </AppBar>
   );
