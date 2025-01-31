@@ -11,9 +11,9 @@ from langchain_openai import ChatOpenAI
 # Load environment variables from the .env file
 load_dotenv()
 
-TOGETHER_API_KEY = os.getenv('TOGETHER_API_KEY')
-if not TOGETHER_API_KEY:
-    raise ValueError("TOGETHER_API_KEY environment variable is required")
+# TOGETHER_API_KEY = os.getenv('TOGETHER_API_KEY')
+# if not TOGETHER_API_KEY:
+#     raise ValueError("TOGETHER_API_KEY environment variable is required")
 
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 if not OPENAI_API_KEY:
@@ -21,13 +21,13 @@ if not OPENAI_API_KEY:
 
 #openai.api_key = OPENAI_API_KEY
 
-client = Together(
-    model="Qwen/Qwen2.5-Coder-32B-Instruct",
-    #model="meta-llama/Meta-Llama-3.3-70B-Instruct-Turbo",
-    #model="nvidia/Llama-3.1-Nemotron-70B-Instruct-HF",
-    api_key=TOGETHER_API_KEY,
-    max_tokens=4096
-)
+# client = Together(
+#     model="Qwen/Qwen2.5-Coder-32B-Instruct",
+#     #model="meta-llama/Meta-Llama-3.3-70B-Instruct-Turbo",
+#     #model="nvidia/Llama-3.1-Nemotron-70B-Instruct-HF",
+#     api_key=TOGETHER_API_KEY,
+#     max_tokens=4096
+# )
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
@@ -59,7 +59,7 @@ llm = ChatOpenAI(
     model_name="gpt-4o",  # or gpt-3.5-turbo
     temperature=0.0,
     max_tokens=4096
-)
+    )
 
 # Initialize toolkit with error handling
 try:
