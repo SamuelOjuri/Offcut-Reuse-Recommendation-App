@@ -6,7 +6,7 @@ from langchain_community.agent_toolkits import SQLDatabaseToolkit
 from langchain_together import Together
 from langchain.agents import AgentExecutor, create_react_agent
 from langchain_core.prompts import PromptTemplate
-
+from langchain_openai import ChatOpenAI
 
 # Load environment variables from the .env file
 load_dotenv()
@@ -14,6 +14,12 @@ load_dotenv()
 TOGETHER_API_KEY = os.getenv('TOGETHER_API_KEY')
 if not TOGETHER_API_KEY:
     raise ValueError("TOGETHER_API_KEY environment variable is required")
+
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+if not OPENAI_API_KEY:
+    raise ValueError("OPENAI_API_KEY environment variable is required")
+
+#openai.api_key = OPENAI_API_KEY
 
 client = Together(
     model="Qwen/Qwen2.5-Coder-32B-Instruct",
@@ -35,16 +41,25 @@ except Exception as e:
     raise
 
 # Initialize LLM with error handling
-try:
-    llm = Together(
-        model="Qwen/Qwen2.5-Coder-32B-Instruct",
-        temperature=0.0,
-        max_tokens=4096,
-        api_key=TOGETHER_API_KEY,
-    )
-except Exception as e:
-    print(f"Error initializing LLM: {e}")
-    raise
+# try:
+#     llm = Together(
+#         model="Qwen/Qwen2.5-Coder-32B-Instruct",
+#         temperature=0.0,
+#         max_tokens=4096,
+#         api_key=TOGETHER_API_KEY,
+#     )
+# except Exception as e:
+#     print(f"Error initializing LLM: {e}")
+#     raise
+
+
+# Initialize LLM with OpenAI GPT-4o
+llm = ChatOpenAI(
+    api_key=OPENAI_API_KEY,
+    model_name="gpt-4o",  # or gpt-3.5-turbo
+    temperature=0.0,
+    max_tokens=4096
+)
 
 # Initialize toolkit with error handling
 try:
@@ -109,12 +124,3 @@ def stream_final_answer(prompt):
             yield chunk['output']
         elif isinstance(chunk, str) and 'Final Answer:' in chunk:
             yield chunk.split('Final Answer:')[1].strip()
-
-
-
-
-
-
-
-
-

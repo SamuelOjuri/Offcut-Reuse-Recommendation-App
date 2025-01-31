@@ -134,7 +134,7 @@ const ChatAssistant: React.FC = () => {
     }
     
     // Check for valid characters
-    const validCharacters = /^[a-zA-Z0-9\s.,!?()-_@#$%^&*]+$/;
+    const validCharacters = /^[a-zA-Z0-9\s.,!?()-_@#$%^&*"'/\\+=:;<>[\]{}|~`±§]+$/;
     if (!validCharacters.test(text)) {
       setError("Message contains invalid characters");
       return false;

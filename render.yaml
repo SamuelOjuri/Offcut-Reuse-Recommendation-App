@@ -19,6 +19,8 @@ services:
         value: production
       - key: ALLOWED_ORIGINS
         value: https://offcut-recommender.netlify.app
+      - key: SECRET_KEY
+        sync: false
     resources:
       memory: 512MB
       cpu: 0.5

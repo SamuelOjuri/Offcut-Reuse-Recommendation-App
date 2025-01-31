@@ -20,6 +20,8 @@ import {
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import API_URL from '../../config/api';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface Recommendation {
   is_double_cut: boolean;
@@ -123,6 +125,47 @@ const Recommender: React.FC = () => {
     link.click();
   };
 
+  const handleDownloadPDF = () => {
+    const doc = new jsPDF();
+    
+    // Add title
+    doc.setFontSize(16);
+    doc.text('Offcut Reuse Recommendations', 14, 15);
+    
+    // Add batch code
+    doc.setFontSize(12);
+    doc.text(`Batch Code: ${batchCode}`, 14, 25);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 32);
+
+    // Create table with recommendations
+    const tableData = recommendations.map(rec => [
+      rec.is_double_cut ? 'Yes' : 'No',
+      rec.matched_profile,
+      rec.legacy_offcut_id,
+      rec.related_legacy_offcut_id || '-',
+      rec.suggested_length.toString(),
+      rec.reasoning
+    ]);
+
+    autoTable(doc, {
+      head: [['Double Cut', 'Profile', 'Offcut ID', 'Related ID', 'Length (mm)', 'Reasoning']],
+      body: tableData,
+      startY: 40,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [66, 66, 66] },
+      columnStyles: {
+        0: { cellWidth: 20 },
+        1: { cellWidth: 30 },
+        2: { cellWidth: 25 },
+        3: { cellWidth: 25 },
+        4: { cellWidth: 25 },
+        5: { cellWidth: 'auto' }
+      }
+    });
+
+    doc.save(`recommendations_${batchCode}.pdf`);
+  };
+
   return (
     <Box sx={{ p: 3, maxWidth: 1200, mx: 'auto' }}>
       <Typography variant="h4" gutterBottom>
@@ -220,16 +263,16 @@ const Recommender: React.FC = () => {
                 variant="outlined" 
                 onClick={handleDownload}
               >
-                Download Recommendations
+                Download CSV
               </Button>
             </Grid>
             <Grid item xs={6}>
               <Button 
                 fullWidth 
                 variant="contained" 
-                onClick={() => alert('Confirmation functionality to be implemented')}
+                onClick={handleDownloadPDF}
               >
-                Confirm Selected Recommendations
+                Download PDF Report
               </Button>
             </Grid>
           </Grid>

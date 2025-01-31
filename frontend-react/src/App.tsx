@@ -11,7 +11,9 @@ import { theme } from './styles/theme';
 import { AuthProvider } from './contexts/AuthContext';
 import Login from './components/Auth/Login';
 import PrivateRoute from './components/Auth/PrivateRoute';
+import ProtectedRoute from './components/Auth/ProtectedRoute';
 import SignUp from './components/Auth/SignUp';
+import Admin from './components/Admin/Admin';
 
 const App: React.FC = () => {
   return (
@@ -41,6 +43,11 @@ const App: React.FC = () => {
             <PrivateRoute>
               <Reports />
             </PrivateRoute>
+          } />
+          <Route path="/admin" element={
+            <ProtectedRoute>
+              <Admin />
+            </ProtectedRoute>
           } />
         </Routes>
       </ThemeProvider>

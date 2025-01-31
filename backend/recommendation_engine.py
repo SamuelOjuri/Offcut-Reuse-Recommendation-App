@@ -4,6 +4,7 @@ import openai  # or your preferred LLM client library
 
 def get_recommendations(cutting_instructions):
     recommendations = []
+    used_offcut_ids = set()  # Track used offcut IDs
     
     print(f"Processing cutting instructions: {cutting_instructions}")
     
@@ -15,20 +16,22 @@ def get_recommendations(cutting_instructions):
         print(f"Searching for: profile={material_profile}, length>={required_length}, double_cut={is_double_cut}")
         
         if is_double_cut:
-            # For double cuts, we need to find two matching offcuts
+            # For double cuts, find two matching offcuts that haven't been used
             offcuts = Offcut.query.filter_by(
                 is_available=True,
                 material_profile=material_profile
             ).filter(
-                Offcut.length_mm >= required_length
+                Offcut.length_mm >= required_length,
+                ~Offcut.legacy_offcut_id.in_(list(used_offcut_ids))  # Exclude used offcuts
             ).order_by(Offcut.length_mm.asc()).limit(2).all()
             
             if len(offcuts) >= 2:
-                # Create recommendation with both offcut IDs
+                # Add both offcut IDs to used set
+                used_offcut_ids.add(offcuts[0].legacy_offcut_id)
+                used_offcut_ids.add(offcuts[1].legacy_offcut_id)
+                
                 recommendations.append({
-                    #'offcut_id': offcuts[0].offcut_id,
                     'legacy_offcut_id': offcuts[0].legacy_offcut_id,
-                    #'related_offcut_id': offcuts[1].offcut_id,
                     'related_legacy_offcut_id': offcuts[1].legacy_offcut_id,
                     'matched_profile': offcuts[0].material_profile,
                     'suggested_length': offcuts[0].length_mm,
@@ -36,20 +39,21 @@ def get_recommendations(cutting_instructions):
                     'reasoning': f"Matched pair of offcuts for double cut {material_profile} with required length {required_length}mm"
                 })
         else:
-            # Original single-cut logic
-            offcuts = Offcut.query.filter_by(
+            # Single-cut logic with exclusion of used offcuts
+            offcut = Offcut.query.filter_by(
                 is_available=True,
                 material_profile=material_profile
             ).filter(
-                Offcut.length_mm >= required_length
+                Offcut.length_mm >= required_length,
+                ~Offcut.legacy_offcut_id.in_(list(used_offcut_ids))  # Exclude used offcuts
             ).order_by(Offcut.length_mm.asc()).first()
             
-            if offcuts:
+            if offcut:
+                used_offcut_ids.add(offcut.legacy_offcut_id)
                 recommendations.append({
-                    #'offcut_id': offcuts.offcut_id,
-                    'legacy_offcut_id': offcuts.legacy_offcut_id,
-                    'matched_profile': offcuts.material_profile,
-                    'suggested_length': offcuts.length_mm,
+                    'legacy_offcut_id': offcut.legacy_offcut_id,
+                    'matched_profile': offcut.material_profile,
+                    'suggested_length': offcut.length_mm,
                     'is_double_cut': False,
                     'reasoning': f"Best matching offcut for {material_profile} with required length {required_length}mm"
                 })
