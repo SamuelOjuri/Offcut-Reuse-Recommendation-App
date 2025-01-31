@@ -58,7 +58,7 @@ llm = ChatOpenAI(
     api_key=OPENAI_API_KEY,
     model_name="gpt-4o",  # or gpt-3.5-turbo
     temperature=0.0,
-    max_tokens=4096
+    max_tokens=None,
     )
 
 # Initialize toolkit with error handling
