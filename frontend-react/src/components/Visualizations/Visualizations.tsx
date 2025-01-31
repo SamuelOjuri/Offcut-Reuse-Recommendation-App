@@ -5,16 +5,15 @@ import {
   MenuItem, 
   Button, 
   Typography, 
-  TextField,
   CircularProgress,
   Alert
 } from '@mui/material';
 import Plot from 'react-plotly.js';
 import API_URL from '../../config/api';
 
-interface VisualizationOptions {
-  [key: string]: string | null;
-}
+// interface VisualizationOptions {
+//   [key: string]: string | null;
+// }
 
 
 
