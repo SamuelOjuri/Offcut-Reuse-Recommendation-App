@@ -169,7 +169,6 @@ const Admin: React.FC = () => {
 
       if (!response.ok) throw new Error('Ingestion failed');
 
-      const data = await response.json();
       await fetchStats(); // Refresh stats after ingestion
       
       // Set success message
