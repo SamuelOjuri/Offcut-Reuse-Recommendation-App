@@ -1,9 +1,9 @@
 import os
 from dotenv import load_dotenv
-from together import Together
+#from together import Together
 from langchain_community.utilities import SQLDatabase
 from langchain_community.agent_toolkits import SQLDatabaseToolkit
-from langchain_together import Together
+#from langchain_together import Together
 from langchain.agents import AgentExecutor, create_react_agent
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
