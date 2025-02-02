@@ -8,26 +8,6 @@ import os
 
 visualization_bp = Blueprint('visualization_bp', __name__)
 
-# # Define allowed origins
-# ALLOWED_ORIGINS = [
-#     'https://offcut-recommender.netlify.app',
-#     'http://localhost:3000'
-# ]
-
-# def get_allowed_origin(request_origin):
-#     return request_origin if request_origin in ALLOWED_ORIGINS else ALLOWED_ORIGINS[0]
-
-# @visualization_bp.route('/generate', methods=['OPTIONS'])
-# def handle_preflight():
-#     request_origin = request.headers.get('Origin')
-#     response = make_response()
-#     response.headers.add('Access-Control-Allow-Origin', get_allowed_origin(request_origin))
-#     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Accept')
-#     response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
-#     response.headers.add('Access-Control-Allow-Credentials', 'true')
-#     response.headers.add('Access-Control-Max-Age', '3600')
-#     return response
-
 @visualization_bp.route('/generate', methods=['POST'])
 def create_visualization_route():
     try:
@@ -35,7 +15,7 @@ def create_visualization_route():
         
         # Lower memory threshold
         mem = psutil.Process().memory_info().rss / 1024 / 1024
-        if mem > 300:
+        if mem > 512:
             return make_response(jsonify({'error': 'Server is busy'}), 503)
             
         data = request.get_json()
