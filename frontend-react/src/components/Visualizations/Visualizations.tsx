@@ -27,7 +27,7 @@ const Visualizations: React.FC = () => {
   const TIMEOUT_MS = 30000; // 30 seconds
 
   const vizOptions: { [key: string]: string } = {
-    "Material Usage Trends": "Create a line chart showing total material usage over time",
+    "Monthly Material Usage": "Create bar charts showing total material usage over time",
     "Top Materials": "Create a bar chart showing the top 10 materials by Total Length Used",
     "Top Offcuts": "Create a bar chart showing top 10 items by total offcut length",
     "Material Efficiency": "Create a visualization of top and bottom 5 materials by efficiency"
