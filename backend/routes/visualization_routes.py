@@ -17,7 +17,7 @@ def create_visualization_route():
         
         # Lower memory threshold
         mem = psutil.Process().memory_info().rss / 1024 / 1024
-        if mem > 300:
+        if mem > 512:
             return make_response(jsonify({'error': 'Server is busy'}), 503)
             
         data = request.get_json()
