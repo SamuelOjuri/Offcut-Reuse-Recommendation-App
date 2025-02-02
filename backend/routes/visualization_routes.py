@@ -8,8 +8,6 @@ import os
 
 visualization_bp = Blueprint('visualization_bp', __name__)
 
-
-
 @visualization_bp.route('/generate', methods=['POST'])
 def create_visualization_route():
     try:

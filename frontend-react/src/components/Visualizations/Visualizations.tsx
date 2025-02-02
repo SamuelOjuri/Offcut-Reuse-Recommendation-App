@@ -1,24 +1,24 @@
-import React, { useState } from 'react';
-import { 
-  Box, 
-  Select, 
-  MenuItem, 
-  Button, 
-  Typography, 
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import {
+  Box,
+  Card,
+  CardContent,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Button,
+  Typography,
   CircularProgress,
   Alert
 } from '@mui/material';
 import Plot from 'react-plotly.js';
 import API_URL from '../../config/api';
 
-// interface VisualizationOptions {
-//   [key: string]: string | null;
-// }
-
-
+type VizOption = "Top Materials" | "Top Offcuts" | "Monthly Material Usage" | "Material Efficiency";
 
 const Visualizations: React.FC = () => {
-  const [selectedViz, setSelectedViz] = useState('');
+  const [selectedViz, setSelectedViz] = useState<VizOption>('Top Materials');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [plotData, setPlotData] = useState<any>(null);
@@ -26,27 +26,25 @@ const Visualizations: React.FC = () => {
   const MAX_RETRIES = 3;
   const TIMEOUT_MS = 30000; // 30 seconds
 
-  const vizOptions: { [key: string]: string } = {
-    "Monthly Material Usage": "Create bar charts showing total material usage over time",
+  const vizOptions = useMemo(() => ({
     "Top Materials": "Create a bar chart showing the top 10 materials by Total Length Used",
     "Top Offcuts": "Create a bar chart showing top 10 items by total offcut length",
+    "Monthly Material Usage": "Create bar charts showing total material usage over time",
     "Material Efficiency": "Create a visualization of top and bottom 5 materials by efficiency"
-  };
+  } as const), []);
 
-  
   const validatePlotData = (data: any): boolean => {
     if (!data || typeof data !== 'object') return false;
     if (!Array.isArray(data.data)) return false;
     if (typeof data.layout !== 'object') return false;
     
-    // Check if data array contains valid trace objects
     return data.data.every((trace: any) => (
       typeof trace === 'object' && 
       (Array.isArray(trace.x) || Array.isArray(trace.y))
     ));
   };
 
-  const generateVisualization = async () => {
+  const generateVisualization = useCallback(async () => {
     setError(null);
     setLoading(true);
     setPlotData(null);
@@ -59,7 +57,7 @@ const Visualizations: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
+          'Accept': 'application/json'
         },
         credentials: 'include',
         body: JSON.stringify({
@@ -75,7 +73,7 @@ const Visualizations: React.FC = () => {
 
       let result = '';
       while (true) {
-        const {done, value} = await reader.read();
+        const { done, value } = await reader.read();
         if (done) break;
         result += new TextDecoder().decode(value);
       }
@@ -93,20 +91,16 @@ const Visualizations: React.FC = () => {
       clearTimeout(timeoutId);
       setLoading(false);
     }
-  };
+  }, [selectedViz, vizOptions]);
 
-  const debouncedGenerateVisualization = async () => {
+  const debouncedGenerateVisualization = useCallback(async () => {
     if (isDebouncing) return;
     setIsDebouncing(true);
     
     let retries = 0;
     while (retries < MAX_RETRIES) {
       try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
-        
         await generateVisualization();
-        clearTimeout(timeoutId);
         break;
       } catch (err) {
         retries++;
@@ -117,60 +111,88 @@ const Visualizations: React.FC = () => {
     }
     
     setTimeout(() => setIsDebouncing(false), 1000);
-  };
+  }, [isDebouncing, generateVisualization]);
+
+  useEffect(() => {
+    debouncedGenerateVisualization();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
-    <Box sx={{ p: 3, maxWidth: 1200, mx: 'auto' }}>
-      <Typography variant="h4" gutterBottom>
-        Material Usage Analysis
-      </Typography>
+    <Box sx={{ 
+      p: 4, 
+      display: 'flex', 
+      justifyContent: 'center', 
+      background: 'linear-gradient(135deg, #f8fafc, #e9eff5)' 
+    }}>
+      <Card sx={{ width: '100%', maxWidth: 1200, borderRadius: 3, boxShadow: 3 }}>
+        <CardContent>
+          <Typography variant="h4" gutterBottom align="center" sx={{ fontWeight: 'bold', mb: 3 }}>
+            Material Usage Analysis
+          </Typography>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+              {error}
+            </Alert>
+          )}
 
-      <Select
-        fullWidth
-        value={selectedViz}
-        onChange={(e) => {
-          setSelectedViz(e.target.value);
-          setPlotData(null);
-        }}
-        sx={{ mb: 2 }}
-      >
-        {Object.keys(vizOptions).map((option) => (
-          <MenuItem key={option} value={option}>
-            {option}
-          </MenuItem>
-        ))}
-      </Select>
+          <Box sx={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 2,
+            alignItems: 'center',
+            justifyContent: 'center',
+            mb: 3
+          }}>
+            <FormControl sx={{ minWidth: 250 }}>
+              <InputLabel id="visualization-select-label">Select Visualization</InputLabel>
+              <Select
+                labelId="visualization-select-label"
+                value={selectedViz}
+                label="Select Visualization"
+                onChange={(e) => {
+                  setSelectedViz(e.target.value as VizOption);
+                  setPlotData(null);
+                }}
+              >
+                {Object.keys(vizOptions).map((option) => (
+                  <MenuItem key={option} value={option}>
+                    {option}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={debouncedGenerateVisualization}
+              disabled={loading || !selectedViz}
+              sx={{
+                minWidth: { xs: '100%', sm: 200 },
+                height: 56
+              }}
+            >
+              {loading ? <CircularProgress size={24} color="inherit" /> : 'Generate'}
+            </Button>
+          </Box>
 
-      <Button 
-        variant="contained" 
-        onClick={debouncedGenerateVisualization}
-        disabled={loading || !selectedViz}
-        sx={{ mb: 3 }}
-      >
-        {loading ? <CircularProgress size={24} /> : 'Generate Visualization'}
-      </Button>
-
-      {plotData && (
-        <Box className="visualization-container">
-          <Plot
-            data={plotData.data}
-            layout={{
-              ...plotData.layout,
-              width: undefined,
-              height: undefined,
-              autosize: true
-            }}
-            style={{ width: '100%', height: '600px' }}
-            useResizeHandler={true}
-          />
-        </Box>
-      )}
+          {plotData && (
+            <Box sx={{ mt: 4 }}>
+              <Plot
+                data={plotData.data}
+                layout={{
+                  ...plotData.layout,
+                  autosize: true,
+                  margin: { t: 50, b: 50, l: 50, r: 50 }
+                }}
+                style={{ width: '100%', height: '600px' }}
+                useResizeHandler={true}
+              />
+            </Box>
+          )}
+        </CardContent>
+      </Card>
     </Box>
   );
 };
