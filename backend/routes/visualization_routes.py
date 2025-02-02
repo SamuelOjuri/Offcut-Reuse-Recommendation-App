@@ -44,7 +44,7 @@ def create_visualization_route():
             
         # Validate that the query is one of the predefined options
         valid_queries = [
-            "Create a line chart showing total material usage over time",
+            "Create bar charts showing total material usage over time",
             "Create a bar chart showing the top 10 materials by Total Length Used",
             "Create a bar chart showing top 10 items by total offcut length",
             "Create a visualization of top and bottom 5 materials by efficiency"

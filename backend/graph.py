@@ -68,7 +68,7 @@ def create_visualization(query_prompt: str):
         if not chunks:
             raise Exception("No data available in the database")
             
-        if query_prompt == "Create a line chart showing total material usage over time":
+        if query_prompt == "Create bar charts showing total material usage over time":
             all_data = []
             
             for chunk in chunks:
@@ -76,9 +76,10 @@ def create_visualization(query_prompt: str):
                     continue
                     
                 try:
-                    # Convert batch_date to datetime and format as string immediately
-                    chunk['batch_date'] = pd.to_datetime(chunk['batch_date']).dt.strftime('%Y-%m-%d')
-                    chunk_data = (chunk.groupby('batch_date')['total_length_used']
+                    # Convert batch_date to datetime and extract year-month
+                    chunk['batch_date'] = pd.to_datetime(chunk['batch_date'])
+                    chunk['year_month'] = chunk['batch_date'].dt.strftime('%Y-%m')
+                    chunk_data = (chunk.groupby('year_month')['total_length_used']
                                 .sum()
                                 .reset_index())
                     all_data.append(chunk_data)
@@ -90,25 +91,36 @@ def create_visualization(query_prompt: str):
                 raise Exception("No valid data available for visualization")
                 
             agg_data = pd.concat(all_data, ignore_index=True)
-            agg_data = (agg_data.groupby('batch_date')['total_length_used']
+            agg_data = (agg_data.groupby('year_month')['total_length_used']
                        .sum()
                        .reset_index())
             
-            # Sort by date string
-            agg_data = agg_data.sort_values('batch_date')
+            # Sort by year-month
+            agg_data = agg_data.sort_values('year_month')
             
-            fig = px.line(
+            fig = px.bar(
                 agg_data,
-                x='batch_date',
+                x='year_month',
                 y='total_length_used',
-                title='Material Usage Over Time',
+                title='Monthly Material Usage',
                 labels={
-                    'batch_date': 'Date',
+                    'year_month': 'Month',
                     'total_length_used': 'Total Length Used (mm)'
                 }
             )
             
-            fig.update_xaxes(tickangle=-45, dtick='M1', nticks=12)
+            # Customize the layout
+            fig.update_layout(
+                xaxis_tickangle=-45,
+                bargap=0.2,
+                showlegend=False
+            )
+            
+            # Update x-axis to show all months
+            fig.update_xaxes(
+                dtick="M1",
+                tickformat="%b %Y"
+            )
             
             del agg_data
             gc.collect()
@@ -206,7 +218,7 @@ def create_visualization(query_prompt: str):
             
             # Get top and bottom 5
             top_5 = avg_efficiency.nlargest(5)
-            bottom_5 = avg_efficiency.nsmallest(5)
+            bottom_5 = avg_efficiency.nsmallest(5).sort_values(ascending=False)
             
             # Combine and reset index
             efficiency_data = pd.concat([top_5, bottom_5]).reset_index()
