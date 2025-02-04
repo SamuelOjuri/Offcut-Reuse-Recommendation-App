@@ -56,7 +56,7 @@ except Exception as e:
 # Initialize LLM with OpenAI GPT-4o
 llm = ChatOpenAI(
     api_key=OPENAI_API_KEY,
-    model_name="gpt-4o",  # or gpt-3.5-turbo
+    model_name="gpt-4o",  # 
     temperature=0.0,
     max_tokens=4096
 )
@@ -72,8 +72,8 @@ except Exception as e:
 tools = toolkit.get_tools()
 
 
-REACT_TEMPLATE = """You are an agent designed to interact with a SQL database.
-Given an input question, create a syntactically correct SQLite query to run, then look at the results of the query and return the answer.
+REACT_TEMPLATE = """You are an agent designed to interact with a PostgreSQL database.
+Given an input question, create a syntactically correct PostgreSQL query to run, then look at the results of the query and return the answer.
 Unless the user specifies a specific number of examples they wish to obtain, always limit your query to at most 5 results.
 You can order the results by a relevant column to return the most interesting examples in the database.
 Never query for all the columns from a specific table, only ask for the relevant columns given the question.
