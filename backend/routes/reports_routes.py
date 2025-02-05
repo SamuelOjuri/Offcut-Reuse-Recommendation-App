@@ -1,6 +1,6 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 from backend.app import db
-from backend.models import Item, BatchItem, Offcut
+from backend.models import Item, BatchItem, Offcut, Batch, BatchDetail
 from sqlalchemy import func
 
 reports_bp = Blueprint('reports_bp', __name__)
@@ -64,6 +64,93 @@ def get_offcuts_inventory():
                 'length_mm': row[1],
                 'legacy_offcut_id': row[2],
                 'quantity': row[3]
+            }
+            for row in query
+        ]
+
+        return jsonify(results), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@reports_bp.route('/items', methods=['GET'])
+def get_items_report():
+    """Retrieve a list of all items with their codes and descriptions."""
+    try:
+        query = db.session.query(
+            Item.item_code,
+            Item.item_description
+        ).order_by(Item.item_description).all()
+
+        results = [
+            {
+                'item_code': row[0] or 'N/A',  # Handle NULL item codes
+                'item_description': row[1]
+            }
+            for row in query
+        ]
+
+        return jsonify(results), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@reports_bp.route('/batches', methods=['GET'])
+def get_batch_report():
+    """Retrieve batch report for a date range."""
+    try:
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+
+        if not start_date or not end_date:
+            return jsonify({'error': 'start_date and end_date are required'}), 400
+
+        query = db.session.query(
+            Batch.batch_code,
+            Batch.batch_date,
+            BatchDetail.saw_name,
+            Item.item_code,
+            Item.item_description,
+            BatchItem.quantity,
+            BatchItem.input_bar_length_mm,
+            BatchItem.bar_length_used_mm,
+            BatchItem.total_length_used_mm,
+            BatchItem.offcut_length_created_mm,
+            BatchItem.total_offcut_length_created_mm,
+            BatchItem.double_cut,
+            BatchItem.waste_percentage,
+            BatchItem.usage_efficiency,
+            BatchDetail.source_file
+        ).join(
+            BatchDetail, Batch.batch_id == BatchDetail.batch_id
+        ).join(
+            BatchItem, (Batch.batch_id == BatchItem.batch_id) & 
+                      (BatchDetail.batch_detail_id == BatchItem.batch_items_id)
+        ).join(
+            Item, BatchItem.item_id == Item.item_id
+        ).filter(
+            Batch.batch_date.between(start_date, end_date)
+        ).order_by(
+            Batch.batch_date.desc()
+        ).all()
+
+        results = [
+            {
+                'batch_code': row[0],
+                'batch_date': row[1].strftime('%Y-%m-%d'),
+                'saw_name': row[2],
+                'item_code': row[3],
+                'item_description': row[4],
+                'quantity': int(row[5]) if row[5] else 0,
+                'input_length': int(row[6]) if row[6] else 0,
+                'bar_length': int(row[7]) if row[7] else 0,
+                'used_length': int(row[8]) if row[8] else 0,
+                'offcut_length': int(row[9]) if row[9] else 0,
+                'total_offcut_length': int(row[10]) if row[10] else 0,
+                'double_cut': bool(row[11]) if row[11] is not None else False,
+                'waste_percentage': float(row[12]) if row[12] else 0,
+                'efficiency': float(row[13]) if row[13] else 0,
+                'source_file': row[14]
             }
             for row in query
         ]
