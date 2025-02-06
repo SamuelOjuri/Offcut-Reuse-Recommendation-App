@@ -54,6 +54,11 @@ interface BatchReport {
   source_file: string;
 }
 
+interface BatchCode {
+  batch_code: string;
+  batch_date: string;
+}
+
 const Reports: React.FC = () => {
   const [tabValue, setTabValue] = useState(0);
   const [summaryMetrics, setSummaryMetrics] = useState<SummaryMetrics[]>([]);
@@ -71,6 +76,7 @@ const Reports: React.FC = () => {
     start: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
     end: new Date()
   });
+  const [batchCodes, setBatchCodes] = useState<BatchCode[]>([]);
 
   // Fetch summary metrics
   const fetchSummaryMetrics = async () => {
@@ -143,11 +149,28 @@ const Reports: React.FC = () => {
     }
   }, [dateRange]);
 
+  // Fetch batch codes
+  const fetchBatchCodes = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_URL}/api/reports/batch-codes`);
+      if (!response.ok) throw new Error('Failed to fetch batch codes');
+      const data = await response.json();
+      setBatchCodes(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (tabValue === 0) fetchSummaryMetrics();
     if (tabValue === 1) fetchOffcuts();
     if (tabValue === 2) fetchItemsList();
     if (tabValue === 3) fetchBatchReport();
+    if (tabValue === 4) fetchBatchCodes();
   }, [tabValue, dateRange, fetchBatchReport]);
 
   const handleDownload = (data: any[], filename: string) => {
@@ -158,13 +181,13 @@ const Reports: React.FC = () => {
       'saw_name',
       'item_code',
       'item_description',
+      'double_cut',
       'quantity',
       'input_length',
       'bar_length',
       'used_length',
       'offcut_length',
       'total_offcut_length',
-      'double_cut',
       'waste_percentage',
       'efficiency',
       'source_file'
@@ -229,19 +252,19 @@ const Reports: React.FC = () => {
       row.saw_name,
       row.item_code,
       row.item_description.substring(0, 30), // Limit description length
+      row.double_cut ? 'Yes' : 'No',
       row.quantity.toString(),
       row.input_length.toString(),
       row.bar_length.toString(),
       row.used_length.toString(),
       row.offcut_length.toString(),
       row.total_offcut_length.toString(),
-      row.double_cut ? 'Yes' : 'No',
       `${row.waste_percentage.toFixed(1)}%`,
       `${row.efficiency.toFixed(1)}%`
     ]);
 
     autoTable(doc, {
-      head: [['Batch Code', 'Date', 'Saw', 'Item Code', 'Description', 'Qty', 'Input', 'Bar', 'Used', 'Offcut', 'Total Off.', 'D.Cut', 'Waste', 'Eff.']],
+      head: [['Batch Code', 'Date', 'Saw', 'Item Code', 'Description', 'D.Cut', 'Qty', 'Input', 'Bar', 'Used', 'Offcut', 'Total Off.', 'Waste', 'Eff.']],
       body: tableData,
       startY: 40,
       styles: {
@@ -262,13 +285,13 @@ const Reports: React.FC = () => {
         2: { cellWidth: 20 }, // Saw
         3: { cellWidth: 25 }, // Item Code
         4: { cellWidth: 35 }, // Description
-        5: { cellWidth: 12 }, // Qty
-        6: { cellWidth: 18 }, // Input
-        7: { cellWidth: 18 }, // Bar
-        8: { cellWidth: 18 }, // Used
-        9: { cellWidth: 18 }, // Offcut
-        10: { cellWidth: 18 }, // Total Offcut
-        11: { cellWidth: 15 }, // Double Cut
+        5: { cellWidth: 15 }, // Double Cut
+        6: { cellWidth: 12 }, // Qty
+        7: { cellWidth: 18 }, // Input
+        8: { cellWidth: 18 }, // Bar
+        9: { cellWidth: 18 }, // Used
+        10: { cellWidth: 18 }, // Offcut
+        11: { cellWidth: 18 }, // Total Offcut
         12: { cellWidth: 15 }, // Waste
         13: { cellWidth: 15 }  // Efficiency
       },
@@ -311,6 +334,7 @@ const Reports: React.FC = () => {
         <Tab label="Available Offcuts" />
         <Tab label="Items List" />
         <Tab label="Batch Report" />
+        <Tab label="Batch Codes" />
       </Tabs>
 
       {loading ? (
@@ -488,13 +512,13 @@ const Reports: React.FC = () => {
                   { field: 'saw_name', headerName: 'Saw Name', flex: 1 },
                   { field: 'item_code', headerName: 'Item Code', flex: 1 },
                   { field: 'item_description', headerName: 'Item Description', flex: 1.5 },
+                  { field: 'double_cut', headerName: 'Double Cut', type: 'boolean', flex: 0.8 },
                   { field: 'quantity', headerName: 'Quantity', type: 'number', flex: 0.8 },
                   { field: 'input_length', headerName: 'Input Bar Length (mm)', type: 'number', flex: 1 },
                   { field: 'bar_length', headerName: 'Bar Length Used (mm)', type: 'number', flex: 1 },
                   { field: 'used_length', headerName: 'Total Length Used(mm)', type: 'number', flex: 1 },
                   { field: 'offcut_length', headerName: 'Offcut Length (mm)', type: 'number', flex: 1 },
                   { field: 'total_offcut_length', headerName: 'Total Offcut (mm)', type: 'number', flex: 1 },
-                  { field: 'double_cut', headerName: 'Double Cut', type: 'boolean', flex: 0.8 },
                   { field: 'waste_percentage', headerName: 'Waste %', type: 'number', flex: 0.8 },
                   { field: 'efficiency', headerName: 'Efficiency %', type: 'number', flex: 0.8 },
                   { field: 'source_file', headerName: 'Source File', flex: 1.5 }
@@ -530,6 +554,31 @@ const Reports: React.FC = () => {
                   Download PDF Report
                 </Button>
               </Box>
+            </Box>
+          )}
+
+          {tabValue === 4 && (
+            <Box sx={{ mt: 3 }}>
+              <DataGrid
+                rows={batchCodes.map((row, index) => ({ id: index, ...row }))}
+                columns={[
+                  { field: 'batch_code', headerName: 'Batch Code', flex: 1 },
+                  { field: 'batch_date', headerName: 'Batch Date', flex: 1 }
+                ]}
+                autoHeight
+                pageSizeOptions={[10, 25, 50, 100]}
+                initialState={{
+                  pagination: { paginationModel: { pageSize: 25 } },
+                }}
+              />
+              
+              <Button 
+                variant="outlined" 
+                onClick={() => handleDownload(batchCodes, 'batch_codes')}
+                sx={{ mt: 2 }}
+              >
+                Download Batch Codes
+              </Button>
             </Box>
           )}
         </>
