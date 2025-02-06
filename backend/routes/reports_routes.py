@@ -159,3 +159,27 @@ def get_batch_report():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@reports_bp.route('/batch-codes', methods=['GET'])
+def get_batch_codes():
+    """Retrieve a list of all batch codes sorted in descending order."""
+    try:
+        query = db.session.query(
+            Batch.batch_code,
+            Batch.batch_date
+        ).order_by(
+            Batch.batch_code.desc()
+        ).all()
+
+        results = [
+            {
+                'batch_code': row[0],
+                'batch_date': row[1].strftime('%Y-%m-%d')
+            }
+            for row in query
+        ]
+
+        return jsonify(results), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
