@@ -76,12 +76,14 @@ def create_visualization(query_prompt: str):
                     continue
                     
                 try:
-                    # Convert batch_date to datetime and extract year-month
+                    # Convert batch_date to datetime and extract year and month details
                     chunk['batch_date'] = pd.to_datetime(chunk['batch_date'])
-                    chunk['year_month'] = chunk['batch_date'].dt.strftime('%Y-%m')
-                    chunk_data = (chunk.groupby('year_month')['total_length_used']
-                                .sum()
-                                .reset_index())
+                    chunk['year'] = chunk['batch_date'].dt.year
+                    chunk['month_num'] = chunk['batch_date'].dt.month
+                    chunk['month_name'] = chunk['batch_date'].dt.strftime('%b')
+                    
+                    # Group by year and month, summing total_length_used for each group
+                    chunk_data = chunk.groupby(['year', 'month_num', 'month_name'])['total_length_used'].sum().reset_index()
                     all_data.append(chunk_data)
                 except Exception as e:
                     logging.error(f"Error processing chunk: {str(e)}")
@@ -89,41 +91,38 @@ def create_visualization(query_prompt: str):
             
             if not all_data:
                 raise Exception("No valid data available for visualization")
-                
+            
             agg_data = pd.concat(all_data, ignore_index=True)
-            agg_data = (agg_data.groupby('year_month')['total_length_used']
-                       .sum()
-                       .reset_index())
+            # Consolidate groups that may be split across chunks
+            agg_data = agg_data.groupby(['year', 'month_num', 'month_name'])['total_length_used'].sum().reset_index()
+            # Sort the data by month number and year
+            agg_data = agg_data.sort_values(['month_num', 'year'])
             
-            # Sort by year-month
-            agg_data = agg_data.sort_values('year_month')
+            # Convert year to string so that Plotly treats it as a discrete category.
+            agg_data['year'] = agg_data['year'].astype(str)
+
+            # Convert total_length_used from millimeters to meters
+            agg_data['total_length_used'] = agg_data['total_length_used'] / 1000
             
+            # Create an unstacked (grouped) column chart using Plotly Express with light green and light blue colors
             fig = px.bar(
                 agg_data,
-                x='year_month',
+                x='month_name',
                 y='total_length_used',
-                title='Monthly Material Usage',
+                color='year',
+                barmode='group',
+                title='Monthly Material Usage Comparison',
                 labels={
-                    'year_month': 'Month',
-                    'total_length_used': 'Total Length Used (mm)'
-                }
+                    'month_name': 'Month',
+                    'total_length_used': 'Total Length Used (m)',
+                    'year': 'Year'
+                },
+                color_discrete_sequence=['green', 'goldenrod']
             )
             
-            # Customize the layout
-            fig.update_layout(
-                xaxis_tickangle=-45,
-                bargap=0.2,
-                showlegend=False
-            )
-            
-            # Update x-axis to show all months
-            fig.update_xaxes(
-                dtick="M1",
-                tickformat="%b %Y"
-            )
-            
-            del agg_data
-            gc.collect()
+
+            # Ensure the legend is shown with an appropriate title
+            fig.update_layout(legend_title_text='Year', showlegend=True)
             
             return _make_json_serializable(fig)
         
@@ -141,17 +140,27 @@ def create_visualization(query_prompt: str):
             
             # Convert to DataFrame and get top 10
             top_materials = (pd.Series(material_totals)
-                           .sort_values(ascending=False)
-                           .head(10)
-                           .reset_index())
+                             .sort_values(ascending=False)
+                             .head(10)
+                             .reset_index())
             top_materials.columns = ['item_description', 'total_length_used']
             
-            fig = px.bar(top_materials,
-                        x='item_description',
-                        y='total_length_used',
-                        title='Top 10 Materials by Total Length Used',
-                        labels={'item_description': 'Item Description',
-                               'total_length_used': 'Total Length Used (mm)'})
+            # Convert total_length_used from millimeters to meters
+            top_materials['total_length_used'] = top_materials['total_length_used'] / 1000
+            
+            # Explicitly set a built-in template and override the default pattern shape sequence
+            fig = px.bar(
+                top_materials,
+                x='item_description',
+                y='total_length_used',
+                title='Top 10 Materials by Total Length Used',
+                labels={
+                    'item_description': 'Item Description',
+                    'total_length_used': 'Total Length Used (m)'
+                },
+                template="plotly",             # Use a built-in template to avoid issues with default patterns
+                pattern_shape_sequence=[]      # Disable marker patterns (avoids the Invalid value error)
+            )
             
             fig.update_xaxes(tickangle=-35)
             return _make_json_serializable(fig)
