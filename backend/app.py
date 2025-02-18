@@ -33,11 +33,11 @@ app.config.from_object('backend.config.Config')
 
 # Set session configuration
 app.config.update(
-    SESSION_COOKIE_SECURE=True,  # Set to True in production with HTTPS
+    SESSION_COOKIE_SECURE=True,  # True for HTTPS
     SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SAMESITE='Lax',
-    PERMANENT_SESSION_LIFETIME=timedelta(minutes=5),  # Reduced since we only store flags
-    SESSION_FILE_THRESHOLD=100  # Limit number of session files
+    SESSION_COOKIE_SAMESITE='None',  # Allow cross-site cookie sending
+    PERMANENT_SESSION_LIFETIME=timedelta(minutes=5),
+    SESSION_FILE_THRESHOLD=100
 )
 
 # Set secret key with fallback to ensure it's always set
