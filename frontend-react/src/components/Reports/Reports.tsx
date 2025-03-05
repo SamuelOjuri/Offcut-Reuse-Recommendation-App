@@ -99,11 +99,12 @@ const Reports: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_URL}/api/reports/offcuts`);
-      if (!response.ok) throw new Error('Failed to fetch offcuts inventory');
-      const data = await response.json();
-      setOffcuts(data);
-      const uniqueProfiles = Array.from(new Set(data.map((item: OffcutInventory) => item.material_profile))) as string[];
+      // Fetch aggregated data for display
+      const reportResponse = await fetch(`${API_URL}/api/reports/offcuts`);
+      if (!reportResponse.ok) throw new Error('Failed to fetch offcuts inventory');
+      const reportData = await reportResponse.json();
+      setOffcuts(reportData);
+      const uniqueProfiles = Array.from(new Set(reportData.map((item: OffcutInventory) => item.material_profile))) as string[];
       const profiles = ['All', ...uniqueProfiles];
       setMaterialProfiles(profiles);
     } catch (err) {
@@ -173,63 +174,57 @@ const Reports: React.FC = () => {
     if (tabValue === 4) fetchBatchCodes();
   }, [tabValue, dateRange, fetchBatchReport]);
 
-  const handleDownload = (data: any[], filename: string) => {
-    // Custom headers and order for batch report
-    const batchReportFields = [
-      'batch_code',
-      'batch_date',
-      'saw_name',
-      'item_code',
-      'item_description',
-      'double_cut',
-      'quantity',
-      'input_length',
-      'bar_length',
-      'used_length',
-      'offcut_length',
-      'total_offcut_length',
-      'waste_percentage',
-      'efficiency',
-      'source_file'
-    ];
+  const handleDownload = async (data: any[], filename: string) => {
+    if (filename.includes('offcuts_inventory')) {
+      try {
+        // Fetch actual offcuts data for download
+        const response = await fetch(`${API_URL}/api/offcut/available`);
+        if (!response.ok) throw new Error('Failed to fetch offcuts data');
+        const offcutsData = await response.json();
+        
+        // Filter by selected profile if needed
+        const filteredData = selectedProfile === 'All' 
+          ? offcutsData 
+          : offcutsData.filter((item: any) => item.material_profile === selectedProfile);
 
-    const batchReportHeaders = {
-      batch_code: 'Batch Code',
-      batch_date: 'Date',
-      saw_name: 'Saw Name',
-      item_code: 'Item Code',
-      item_description: 'Item Description',
-      quantity: 'Quantity',
-      input_length: 'Input Bar Length (mm)',
-      bar_length: 'Bar Length Used (mm)',
-      used_length: 'Total Length Used (mm)',
-      offcut_length: 'Offcut Length (mm)',
-      total_offcut_length: 'Total Offcut (mm)',
-      double_cut: 'Double Cut',
-      waste_percentage: 'Waste %',
-      efficiency: 'Efficiency %',
-      source_file: 'Source File'
-    };
+        // Create CSV content
+        const headers = ['Offcut ID', 'Legacy ID', 'Material Profile', 'Length (mm)', 'Reuse Count'];
+        const csvContent = 
+          'data:text/csv;charset=utf-8,' + 
+          headers.join(',') + '\n' +
+          filteredData.map((row: any) => [
+            row.offcut_id,
+            row.legacy_offcut_id,
+            row.material_profile,
+            row.length_mm,
+            row.reuse_count
+          ].join(',')).join('\n');
 
-    const csvContent = 
-      'data:text/csv;charset=utf-8,' + 
-      (filename === 'batch_report' 
-        ? batchReportFields.map(field => batchReportHeaders[field as keyof typeof batchReportHeaders]).join(',')
-        : Object.keys(data[0]).join(',')
-      ) + '\n' +
-      data.map(row => 
-        filename === 'batch_report'
-          ? batchReportFields.map(field => row[field]).join(',')
-          : Object.values(row).join(',')
-      ).join('\n');
-    
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `${filename}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', `${filename}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred while downloading');
+      }
+    } else {
+      // Original download logic for other data types
+      const csvContent = 
+        'data:text/csv;charset=utf-8,' + 
+        Object.keys(data[0]).join(',') + '\n' +
+        data.map(row => Object.values(row).join(',')).join('\n');
+      
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', `${filename}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   const handleDownloadPDF = (data: BatchReport[], filename: string) => {
